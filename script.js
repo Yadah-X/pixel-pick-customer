@@ -33,7 +33,7 @@ function showAccountMessage(message) {
 }
 
 
-function toggleAccountMode() {
+function function toggleAccountMode() {
   accountMode = accountMode === 'signin' ? 'signup' : 'signin';
 
   document.getElementById('accountTitle').textContent =
