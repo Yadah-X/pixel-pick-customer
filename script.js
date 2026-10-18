@@ -32,7 +32,26 @@ function showAccountMessage(message) {
   document.getElementById('accountMessage').textContent = message;
 }
 
+
 function toggleAccountMode() {
+  accountMode = accountMode === 'signin' ? 'signup' : 'signin';
+
+  document.getElementById('accountTitle').textContent =
+    accountMode === 'signup' ? 'Create your account' : 'Sign in';
+
+  document.querySelector('#accountForm button[type="submit"]').textContent =
+    accountMode === 'signup' ? 'Register' : 'Sign in';
+
+  document.getElementById('accountModeButton').textContent =
+    accountMode === 'signup'
+      ? 'Already have an account? Sign in'
+      : 'Need an account? Register';
+
+  document.getElementById('accountPassword').autocomplete =
+    accountMode === 'signup' ? 'new-password' : 'current-password';
+
+  showAccountMessage('');
+} {
   accountMode = accountMode === 'signin' ? 'signup' : 'signin';
 
   document.getElementById('accountTitle').textContent =
@@ -60,7 +79,8 @@ async function refreshAccount() {
 
   const signedIn = Boolean(data.session);
 
-  document.getElementById('signOutButton').classList.toggle('hidden', !signedIn);
+  document.getElementById('signOutButton').classList.toggle('hidden',document.getElementById('accountForm').reset();
+document.querySelector('#accountForm button[type="submit"]').textContent = 'Sign in'; !signedIn);document.getElementById('signOutButton').textContent = 'Sign out';
   document.querySelector('#accountForm button[type="submit"]').disabled = signedIn;
 
   if (signedIn) {
