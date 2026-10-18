@@ -1,1 +1,32 @@
 *{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f7f7f4;color:#111}a{text-decoration:none;color:inherit}.nav{height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 6%;background:#111;color:#fff;position:sticky;top:0;z-index:5}.logo{font-weight:900;letter-spacing:-1px;font-size:21px}.logo span{color:#c7ff35}.nav nav{display:flex;gap:28px;font-size:14px}.outline{background:transparent;color:#fff;border:1px solid #555;padding:10px 16px;border-radius:999px}.hero{min-height:590px;background:#111;color:#fff;display:grid;grid-template-columns:1.2fr .8fr;gap:60px;padding:85px 9%;align-items:center}.eyebrow{font-size:12px;font-weight:800;letter-spacing:2px;color:#7b7b70}.hero .eyebrow,.dark .eyebrow{color:#c7ff35}.hero h1{font-size:clamp(58px,8vw,100px);line-height:.9;letter-spacing:-6px;margin:20px 0}.hero h1 span{color:#c7ff35}.lead{font-size:19px;max-width:550px;color:#bbb;margin-bottom:34px}.cta{display:inline-block;background:#c7ff35;color:#111;border:0;padding:14px 22px;border-radius:8px;font-weight:800;cursor:pointer}.full{width:100%;margin-top:15px}.feature{background:#1c1c1c;border:1px solid #333;border-radius:24px;padding:30px;box-shadow:0 20px 80px #0008}.pill{font-size:10px;font-weight:900;letter-spacing:1px;color:#111;background:#c7ff35;padding:6px 9px;border-radius:999px;display:inline-block}.emoji{font-size:100px;text-align:center;padding:25px}.feature h2{font-size:29px;margin:5px 0}.feature p{color:#aaa}.section{padding:82px 9%}.section h2{font-size:46px;letter-spacing:-2px;margin:8px 0 35px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}.card{background:#fff;border:1px solid #e5e5df;border-radius:18px;overflow:hidden}.visual{height:205px;display:flex;align-items:center;justify-content:center;font-size:88px;background:#ecece7}.sneaker{background:#e9e1d6}.audio{background:#e1e8ea}.pad{padding:23px}.pad h3{font-size:24px;margin:14px 0 8px}.pad p{color:#666}.row{display:flex;justify-content:space-between;align-items:center;margin-top:22px}.row button{border:0;background:#111;color:#fff;border-radius:7px;padding:10px 17px;font-weight:700;cursor:pointer}.dark{background:#111;color:#fff}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:45px}.steps strong{color:#c7ff35;font-size:44px}.steps h3{font-size:25px}.steps p{color:#aaa}.account{background:#fff}.modal{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}.hidden{display:none}.modal-box{background:#fff;max-width:540px;width:100%;padding:30px;border-radius:20px;position:relative}.close{position:absolute;right:18px;top:10px;background:none;border:0;font-size:30px;cursor:pointer}.board{height:220px;border-radius:12px;background:linear-gradient(135deg,#e8e8e8,#cfcfcf);margin:22px 0;position:relative;cursor:crosshair}.target{position:absolute;left:47%;top:42%;width:36px;height:36px;border-radius:50%;background:#c7ff35;color:#111;display:grid;place-items:center;font-weight:900}.coords{display:flex;gap:12px}.coords label{flex:1;font-weight:700}.coords input{display:block;width:100%;padding:12px;margin-top:6px;border:1px solid #ddd;border-radius:7px}small{display:block;margin-top:12px;color:#777}footer{padding:28px 9%;font-size:12px;color:#777}@media(max-width:800px){.hero{grid-template-columns:1fr;padding:60px 6%}.nav nav{display:none}.grid,.steps{grid-template-columns:1fr}.section{padding:60px 6%}.hero h1{letter-spacing:-3px}}
+/* Fix account modal button visibility */
+#accountModeButton,
+#signOutButton {
+  display: inline-block;
+  min-height: 44px;
+  padding: 12px 18px;
+  margin-top: 12px;
+  color: #ffffff;
+  background-color: #222222;
+  border: 1px solid #777777;
+  border-radius: 8px;
+  font-size: 15px;
+  line-height: 1.4;
+  text-align: center;
+  cursor: pointer;
+}
+
+#accountModeButton {
+  width: 100%;
+}
+
+#signOutButton {
+  width: 100%;
+}
+
+/* Keep hidden buttons hidden */
+#accountModeButton.hidden,
+#signOutButton.hidden,
+.hidden {
+  display: none !important;
+}
