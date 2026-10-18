@@ -10,6 +10,7 @@ const supabaseClient = window.supabase.createClient(
 const modal = document.getElementById('modal');
 let accountMode = 'signin';
 
+// Competition challenge modal
 function openChallenge() {
   modal.classList.remove('hidden');
 }
@@ -18,6 +19,7 @@ function closeChallenge() {
   modal.classList.add('hidden');
 }
 
+// Account modal
 function openAccount() {
   document.getElementById('accountModal').classList.remove('hidden');
   showAccountMessage('');
@@ -32,8 +34,8 @@ function showAccountMessage(message) {
   document.getElementById('accountMessage').textContent = message;
 }
 
-
-function function toggleAccountMode() {
+// Switch between sign-in and registration
+function toggleAccountMode() {
   accountMode = accountMode === 'signin' ? 'signup' : 'signin';
 
   document.getElementById('accountTitle').textContent =
@@ -51,24 +53,9 @@ function function toggleAccountMode() {
     accountMode === 'signup' ? 'new-password' : 'current-password';
 
   showAccountMessage('');
-} {
-  accountMode = accountMode === 'signin' ? 'signup' : 'signin';
-
-  document.getElementById('accountTitle').textContent =
-    accountMode === 'signup' ? 'Create your account' : 'Sign in';
-
-  document.querySelector('#accountForm button[type="submit"]').textContent =
-    accountMode === 'signup' ? 'Register' : 'Sign in';
-
-  document.querySelector('#accountModal button.outline[type="button"]').textContent =
-    accountMode === 'signup' ? 'Already have an account? Sign in' : 'Need an account? Register';
-
-  document.getElementById('accountPassword').autocomplete =
-    accountMode === 'signup' ? 'new-password' : 'current-password';
-
-  showAccountMessage('');
 }
 
+// Check the current sign-in status
 async function refreshAccount() {
   const { data, error } = await supabaseClient.auth.getSession();
 
@@ -79,61 +66,82 @@ async function refreshAccount() {
 
   const signedIn = Boolean(data.session);
 
-  document.getElementById('signOutButton').classList.toggle('hidden',document.getElementById('accountForm').reset();
-document.querySelector('#accountForm button[type="submit"]').textContent = 'Sign in'; !signedIn);document.getElementById('signOutButton').textContent = 'Sign out';
-  document.querySelector('#accountForm button[type="submit"]').disabled = signedIn;
+  document.getElementById('signOutButton').classList.toggle(
+    'hidden',
+    !signedIn
+  );
+
+  document.getElementById('signOutButton').textContent = 'Sign out';
+
+  document.querySelector('#accountForm button[type="submit"]').disabled =
+    signedIn;
 
   if (signedIn) {
-    showAccountMessage('You are signed in. Your competition entries are not yet connected.');
+    showAccountMessage(
+      'You are signed in. Your competition entries are not yet connected.'
+    );
   }
 }
 
-document.getElementById('accountForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
+// Sign in or register
+document.getElementById('accountForm').addEventListener(
+  'submit',
+  async (event) => {
+    event.preventDefault();
 
-  const email = document.getElementById('accountEmail').value.trim();
-  const password = document.getElementById('accountPassword').value;
-  const submitButton = document.querySelector('#accountForm button[type="submit"]');
+    const email = document.getElementById('accountEmail').value.trim();
+    const password = document.getElementById('accountPassword').value;
+    const submitButton = document.querySelector(
+      '#accountForm button[type="submit"]'
+    );
 
-  submitButton.disabled = true;
-  showAccountMessage('Please wait...');
+    submitButton.disabled = true;
+    showAccountMessage('Please wait...');
 
-  try {
-    if (accountMode === 'signup') {
-      const { data, error } = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin
+    try {
+      if (accountMode === 'signup') {
+        const { data, error } = await supabaseClient.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: window.location.origin
+          }
+        });
+
+        if (error) throw error;
+
+        if (data.session) {
+          showAccountMessage('Account created and signed in successfully.');
+        } else {
+          showAccountMessage(
+            'Registration submitted. Check your email to confirm your account before signing in.'
+          );
         }
-      });
-
-      if (error) throw error;
-
-      if (data.session) {
-        showAccountMessage('Account created and signed in successfully.');
       } else {
-        showAccountMessage('Registration submitted. Check your email to confirm your account before signing in.');
+        const { error } = await supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) throw error;
+
+        showAccountMessage('Signed in successfully.');
       }
-    } else {
-      const { error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
 
-      if (error) throw error;
+      await refreshAccount();
+    } catch (error) {
+      showAccountMessage(
+        error.message || 'Something went wrong. Please try again.'
+      );
+    } finally {
+      const { data } = await supabaseClient.auth.getSession();
 
-      showAccountMessage('Signed in successfully.');
+      submitButton.disabled = Boolean(data.session);
     }
-
-    await refreshAccount();
-  } catch (error) {
-    showAccountMessage(error.message || 'Something went wrong. Please try again.');
-  } finally {
-    submitButton.disabled = false;
   }
-});
+);
 
+// Sign out
 async function signOutAccount() {
   const { error } = await supabaseClient.auth.signOut();
 
@@ -142,49 +150,48 @@ async function signOutAccount() {
     return;
   }
 
-  showAccountMessage('You have signed out.');
-  document.querySelector('#accountForm button[type="submit"]').disabled = false;
-  document.getElementById('signOutButton').classList.add('hidden');
   accountMode = 'signin';
+
+  document.getElementById('accountForm').reset();
+
+  document.querySelector('#accountForm button[type="submit"]').textContent =
+    'Sign in';
+
+  document.getElementById('accountModeButton').textContent =
+    'Need an account? Register';
+
+  document.getElementById('signOutButton').classList.add('hidden');
+
+  document.querySelector('#accountForm button[type="submit"]').disabled =
+    false;
+
+  showAccountMessage('You have signed out.');
 }
 
-async function submitEntry() {
-  showAccountMessage('');
+// Display a previously saved demo answer
+const savedEntry = localStorage.getItem('pixelPickEntry');
 
-  const { data } = await supabaseClient.auth.getSession();
-
-  if (!data.session) {
-    alert('Please sign in before proceeding. Entries are still in demo mode.');
-    openAccount();
-    return;
-  }
-
-  const x = document.getElementById('x').value;
-  const y = document.getElementById('y').value;
-  const msg = `Demo answer — X: ${x}, Y: ${y}. No real entry or payment was created.`;
-
-  localStorage.setItem('pixelPickEntry', msg);
-  document.getElementById('entryText').textContent = msg;
-  closeChallenge();
-  alert('Demo answer saved locally. No competition entry or payment was created.');
+if (savedEntry) {
+  document.getElementById('entryText').textContent = savedEntry;
 }
 
-if (localStorage.getItem('pixelPickEntry')) {
-  document.getElementById('entryText').textContent =
-    localStorage.getItem('pixelPickEntry');
-}
-
+// Handle clicks on the challenge board
 document.getElementById('board').addEventListener('click', (event) => {
   const board = event.currentTarget;
   const rect = board.getBoundingClientRect();
 
-  document.getElementById('x').value =
-    Math.max(0, Math.min(100, Math.round((event.clientX - rect.left) / rect.width * 100)));
+  document.getElementById('x').value = Math.max(
+    0,
+    Math.min(100, Math.round(((event.clientX - rect.left) / rect.width) * 100))
+  );
 
-  document.getElementById('y').value =
-    Math.max(0, Math.min(100, Math.round((event.clientY - rect.top) / rect.height * 100)));
+  document.getElementById('y').value = Math.max(
+    0,
+    Math.min(100, Math.round(((event.clientY - rect.top) / rect.height) * 100))
+  );
 });
 
+// Update the account interface when sign-in status changes
 supabaseClient.auth.onAuthStateChange(() => {
   refreshAccount();
 });
