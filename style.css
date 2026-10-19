@@ -1,13 +1,475 @@
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f7f7f4;color:#111}a{text-decoration:none;color:inherit}.nav{height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 6%;background:#111;color:#fff;position:sticky;top:0;z-index:5}.logo{font-weight:900;letter-spacing:-1px;font-size:21px}.logo span{color:#c7ff35}.nav nav{display:flex;gap:28px;font-size:14px}.outline{background:transparent;color:#fff;border:1px solid #555;padding:10px 16px;border-radius:999px}.hero{min-height:590px;background:#111;color:#fff;display:grid;grid-template-columns:1.2fr .8fr;gap:60px;padding:85px 9%;align-items:center}.eyebrow{font-size:12px;font-weight:800;letter-spacing:2px;color:#7b7b70}.hero .eyebrow,.dark .eyebrow{color:#c7ff35}.hero h1{font-size:clamp(58px,8vw,100px);line-height:.9;letter-spacing:-6px;margin:20px 0}.hero h1 span{color:#c7ff35}.lead{font-size:19px;max-width:550px;color:#bbb;margin-bottom:34px}.cta{display:inline-block;background:#c7ff35;color:#111;border:0;padding:14px 22px;border-radius:8px;font-weight:800;cursor:pointer}.full{width:100%;margin-top:15px}.feature{background:#1c1c1c;border:1px solid #333;border-radius:24px;padding:30px;box-shadow:0 20px 80px #0008}.pill{font-size:10px;font-weight:900;letter-spacing:1px;color:#111;background:#c7ff35;padding:6px 9px;border-radius:999px;display:inline-block}.emoji{font-size:100px;text-align:center;padding:25px}.feature h2{font-size:29px;margin:5px 0}.feature p{color:#aaa}.section{padding:82px 9%}.section h2{font-size:46px;letter-spacing:-2px;margin:8px 0 35px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}.card{background:#fff;border:1px solid #e5e5df;border-radius:18px;overflow:hidden}.visual{height:205px;display:flex;align-items:center;justify-content:center;font-size:88px;background:#ecece7}.sneaker{background:#e9e1d6}.audio{background:#e1e8ea}.pad{padding:23px}.pad h3{font-size:24px;margin:14px 0 8px}.pad p{color:#666}.row{display:flex;justify-content:space-between;align-items:center;margin-top:22px}.row button{border:0;background:#111;color:#fff;border-radius:7px;padding:10px 17px;font-weight:700;cursor:pointer}.dark{background:#111;color:#fff}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:45px}.steps strong{color:#c7ff35;font-size:44px}.steps h3{font-size:25px}.steps p{color:#aaa}.account{background:#fff}.modal{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}.hidden{display:none}.modal-box{background:#fff;max-width:540px;width:100%;padding:30px;border-radius:20px;position:relative}.close{position:absolute;right:18px;top:10px;background:none;border:0;font-size:30px;cursor:pointer}.board{height:220px;border-radius:12px;background:linear-gradient(135deg,#e8e8e8,#cfcfcf);margin:22px 0;position:relative;cursor:crosshair}.target{position:absolute;left:47%;top:42%;width:36px;height:36px;border-radius:50%;background:#c7ff35;color:#111;display:grid;place-items:center;font-weight:900}.coords{display:flex;gap:12px}.coords label{flex:1;font-weight:700}.coords input{display:block;width:100%;padding:12px;margin-top:6px;border:1px solid #ddd;border-radius:7px}small{display:block;margin-top:12px;color:#777}footer{padding:28px 9%;font-size:12px;color:#777}@media(max-width:800px){.hero{grid-template-columns:1fr;padding:60px 6%}.nav nav{display:none}.grid,.steps{grid-template-columns:1fr}.section{padding:60px 6%}.hero h1{letter-spacing:-3px}}
-/* Fix account modal button visibility */
+
+/* ========================================
+   PIXEL PICK — MAIN STYLES
+   ======================================== */
+
+:root {
+  --background: #f7f7f4;
+  --surface: #ffffff;
+  --dark: #111111;
+  --text: #111111;
+  --muted: #666666;
+  --lime: #c7ff35;
+  --border: #e5e5df;
+  --radius: 18px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 85px;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, Arial, sans-serif;
+  background: var(--background);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+body,
+button,
+input {
+  font-family: Inter, Arial, sans-serif;
+}
+
+button,
+input {
+  font-size: 16px;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid #84b900;
+  outline-offset: 3px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ========================================
+   NAVIGATION
+   ======================================== */
+
+.nav {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 6%;
+  background: var(--dark);
+  color: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.logo {
+  flex-shrink: 0;
+  font-weight: 900;
+  letter-spacing: -1px;
+  font-size: 21px;
+}
+
+.logo span {
+  color: var(--lime);
+}
+
+.nav nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font-size: 14px;
+}
+
+.nav nav a:hover {
+  color: var(--lime);
+}
+
+.outline {
+  display: inline-block;
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid #555555;
+  padding: 10px 16px;
+  border-radius: 999px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.nav > .outline {
+  flex-shrink: 0;
+}
+
+.outline:hover {
+  border-color: var(--lime);
+}
+
+/* ========================================
+   HERO
+   ======================================== */
+
+.hero {
+  min-height: 590px;
+  background: var(--dark);
+  color: #ffffff;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 60px;
+  padding: 85px 9%;
+  align-items: center;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #7b7b70;
+}
+
+.hero .eyebrow,
+.dark .eyebrow {
+  color: var(--lime);
+}
+
+.hero h1 {
+  font-size: clamp(58px, 8vw, 100px);
+  line-height: 0.98;
+  letter-spacing: -6px;
+  margin: 20px 0;
+}
+
+.hero h1 span {
+  color: var(--lime);
+}
+
+.lead {
+  font-size: 19px;
+  max-width: 550px;
+  color: #bbbbbb;
+  margin-bottom: 34px;
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+
+.cta {
+  display: inline-block;
+  background: var(--lime);
+  color: var(--dark);
+  border: 0;
+  padding: 14px 22px;
+  border-radius: 8px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.cta:hover {
+  background: #d5ff69;
+}
+
+.full {
+  width: 100%;
+  margin-top: 15px;
+}
+
+/* ========================================
+   FEATURED PANEL
+   ======================================== */
+
+.feature {
+  min-width: 0;
+  background: #1c1c1c;
+  border: 1px solid #333333;
+  border-radius: 24px;
+  padding: 30px;
+  box-shadow: 0 20px 80px #0008;
+}
+
+.pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--dark);
+  background: var(--lime);
+  padding: 6px 9px;
+  border-radius: 999px;
+}
+
+.emoji {
+  font-size: 100px;
+  text-align: center;
+  padding: 25px;
+}
+
+.feature h2 {
+  font-size: 29px;
+  margin: 5px 0;
+}
+
+.feature p {
+  color: #aaaaaa;
+}
+
+/* ========================================
+   SECTIONS
+   ======================================== */
+
+.section {
+  padding: 82px 9%;
+  scroll-margin-top: 72px;
+}
+
+.section h2 {
+  font-size: clamp(32px, 5vw, 46px);
+  line-height: 1.15;
+  letter-spacing: -2px;
+  margin: 8px 0 35px;
+}
+
+/* ========================================
+   COMPETITION CARDS
+   ======================================== */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.grid > p {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+
+.card {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.visual {
+  min-height: 180px;
+  height: 205px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 88px;
+  background: #ecece7;
+}
+
+.pad {
+  padding: 23px;
+}
+
+.pad h3 {
+  overflow-wrap: anywhere;
+  font-size: 24px;
+  line-height: 1.25;
+  margin: 14px 0 8px;
+}
+
+.pad p {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.row b {
+  overflow-wrap: anywhere;
+}
+
+.row button {
+  border: 0;
+  background: var(--dark);
+  color: #ffffff;
+  border-radius: 7px;
+  padding: 11px 17px;
+  font-weight: 700;
+  min-height: 44px;
+}
+
+.row button:hover {
+  background: #333333;
+}
+
+/* ========================================
+   HOW IT WORKS
+   ======================================== */
+
+.dark {
+  background: var(--dark);
+  color: #ffffff;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 45px;
+}
+
+.steps strong {
+  color: var(--lime);
+  font-size: 44px;
+}
+
+.steps h3 {
+  font-size: 25px;
+}
+
+.steps p {
+  color: #aaaaaa;
+}
+
+/* ========================================
+   MY ENTRIES
+   ======================================== */
+
+.account {
+  background: #ffffff;
+}
+
+#entryText {
+  overflow-wrap: anywhere;
+}
+
+/* ========================================
+   MODALS
+   ======================================== */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: #000b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 10;
+  overflow-y: auto;
+}
+
+.modal-box {
+  background: #ffffff;
+  color: var(--dark);
+  max-width: 540px;
+  width: 100%;
+  max-height: calc(100% - 20px);
+  overflow-y: auto;
+  padding: 30px;
+  border-radius: 20px;
+  position: relative;
+}
+
+.modal-box h2 {
+  padding-right: 24px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.close {
+  position: absolute;
+  right: 18px;
+  top: 10px;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: 0;
+  color: var(--dark);
+  font-size: 30px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.close:hover {
+  background: #eeeeee;
+}
+
+/* ========================================
+   ACCOUNT FORM
+   ======================================== */
+
+#accountForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#accountForm label {
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+#accountForm input {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  margin-top: 6px;
+  padding: 12px;
+  color: var(--dark);
+  background: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 8px;
+}
+
+#accountForm input:disabled {
+  background: #f1f1f1;
+  color: #666666;
+}
+
+#accountForm button[type="submit"] {
+  margin-top: 15px;
+}
+
 #accountModeButton,
 #signOutButton {
   display: inline-block;
+  width: 100%;
   min-height: 44px;
   padding: 12px 18px;
   margin-top: 12px;
   color: #ffffff;
-  background-color: #222222;
+  background: #222222;
   border: 1px solid #777777;
   border-radius: 8px;
   font-size: 15px;
@@ -16,17 +478,210 @@
   cursor: pointer;
 }
 
-#accountModeButton {
-  width: 100%;
+#accountModeButton:hover,
+#signOutButton:hover {
+  background: #333333;
+  border-color: #999999;
 }
 
-#signOutButton {
-  width: 100%;
-}
-
-/* Keep hidden buttons hidden */
 #accountModeButton.hidden,
 #signOutButton.hidden,
 .hidden {
   display: none !important;
+}
+
+#accountMessage,
+#competitionMessage {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+/* ========================================
+   CHALLENGE BOARD
+   ======================================== */
+
+.board {
+  height: 220px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e8e8e8, #cfcfcf);
+  margin: 22px 0;
+  position: relative;
+  cursor: crosshair;
+  touch-action: manipulation;
+}
+
+.target {
+  position: absolute;
+  left: 47%;
+  top: 42%;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--lime);
+  color: var(--dark);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  pointer-events: none;
+}
+
+.coords {
+  display: flex;
+  gap: 12px;
+}
+
+.coords label {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.coords input {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px;
+  margin-top: 6px;
+  border: 1px solid #dddddd;
+  border-radius: 7px;
+}
+
+/* ========================================
+   FOOTER
+   ======================================== */
+
+footer {
+  padding: 28px 9%;
+  font-size: 12px;
+  color: #777777;
+  line-height: 1.7;
+}
+
+/* ========================================
+   TABLET AND MOBILE
+   ======================================== */
+
+@media (max-width: 1000px) {
+  .hero {
+    gap: 35px;
+    padding-left: 6%;
+    padding-right: 6%;
+  }
+
+  .section {
+    padding-left: 6%;
+    padding-right: 6%;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nav nav {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 800px) {
+  .nav {
+    min-height: 68px;
+    padding: 12px 5%;
+    flex-wrap: wrap;
+  }
+
+  .nav nav {
+    display: none;
+  }
+
+  .nav > .outline {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .hero {
+    min-height: auto;
+    grid-template-columns: 1fr;
+    padding: 60px 6%;
+    gap: 35px;
+  }
+
+  .hero h1 {
+    font-size: clamp(54px, 12vw, 78px);
+    letter-spacing: -3px;
+  }
+
+  .section {
+    padding: 60px 6%;
+  }
+
+  .section h2 {
+    letter-spacing: -1px;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+
+  footer {
+    padding: 25px 6%;
+  }
+}
+
+@media (max-width: 520px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature {
+    padding: 23px;
+    border-radius: 18px;
+  }
+
+  .feature h2 {
+    font-size: 25px;
+  }
+
+  .pad {
+    padding: 20px;
+  }
+
+  .pad h3 {
+    font-size: 22px;
+  }
+
+  .modal {
+    padding: 10px;
+    align-items: center;
+  }
+
+  .modal-box {
+    padding: 24px 20px;
+    border-radius: 16px;
+    max-height: calc(100% - 10px);
+  }
+
+  .coords {
+    gap: 10px;
+  }
+
+  .board {
+    height: 200px;
+  }
+}
+
+/* Reduce animation for visitors who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
