@@ -1,6 +1,7 @@
 
 const SUPABASE_URL = 'https://cxhclxtbtrsyfigqleeg.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_N4pRAlpCzjTEoKR7TCYOEA_Irj7mCrv';
+const SUPABASE_PUBLISHABLE_KEY =
+  'sb_publishable_N4pRAlpCzjTEoKR7TCYOEA_Irj7mCrv';
 
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
@@ -8,10 +9,130 @@ const supabaseClient = window.supabase.createClient(
 );
 
 const modal = document.getElementById('modal');
+const accountModal = document.getElementById('accountModal');
+
 let accountMode = 'signin';
 
-// Competition challenge modal
-function openChallenge() {
+// ------------------------------------------
+// Competition loading — READ ONLY
+// ------------------------------------------
+
+async function loadCompetitions() {
+  const grid = document.getElementById('competitionGrid');
+  const message = document.getElementById('competitionMessage');
+
+  if (!grid) return;
+
+  grid.replaceChildren();
+
+  const loading = document.createElement('p');
+  loading.textContent = 'Loading available competitions...';
+  grid.appendChild(loading);
+
+  if (message) message.textContent = '';
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('competitions')
+      .select('id, name, prize_description, entry_price_cents, closes_at')
+      .eq('status', 'open')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    grid.replaceChildren();
+
+    if (!data || data.length === 0) {
+      const empty = document.createElement('p');
+      empty.textContent =
+        'There are no open competitions at the moment. Please check back soon.';
+      grid.appendChild(empty);
+      return;
+    }
+
+    data.forEach((competition) => {
+      const card = document.createElement('article');
+      card.className = 'card';
+
+      const visual = document.createElement('div');
+      visual.className = 'visual';
+      visual.textContent = '🎁';
+      visual.setAttribute('aria-hidden', 'true');
+
+      const pad = document.createElement('div');
+      pad.className = 'pad';
+
+      const pill = document.createElement('span');
+      pill.className = 'pill';
+      pill.textContent = 'OPEN COMPETITION';
+
+      const title = document.createElement('h3');
+      title.textContent = competition.name;
+
+      const description = document.createElement('p');
+      description.textContent =
+        competition.prize_description || 'See competition rules for details.';
+
+      const row = document.createElement('div');
+      row.className = 'row';
+
+      const price = document.createElement('b');
+      const cents = Number(competition.entry_price_cents);
+
+      price.textContent = Number.isFinite(cents) && cents >= 0
+        ? `R${(cents / 100).toFixed(2)}`
+        : 'Price unavailable';
+
+      const enterButton = document.createElement('button');
+      enterButton.type = 'button';
+      enterButton.textContent = 'View challenge';
+
+      // This is a demonstration only. It does not create an entry.
+      enterButton.addEventListener('click', () => {
+        openChallenge(competition.id, competition.name);
+      });
+
+      row.append(price, enterButton);
+      pad.append(pill, title, description, row);
+      card.append(visual, pad);
+      grid.appendChild(card);
+    });
+  } catch (error) {
+    console.error('Could not load competitions:', error);
+
+    grid.replaceChildren();
+
+    const problem = document.createElement('p');
+    problem.textContent =
+      'We could not load competitions. Please refresh the page and try again.';
+    grid.appendChild(problem);
+
+    if (message) {
+      message.textContent =
+        'Competition data could not be loaded. Your account has not been affected.';
+    }
+  }
+}
+
+// ------------------------------------------
+// Challenge modal — DEMO ONLY
+// ------------------------------------------
+
+let selectedCompetitionId = null;
+let selectedCompetitionName = 'Demo challenge';
+
+function openChallenge(competitionId = null, competitionName = 'Demo challenge') {
+  selectedCompetitionId = competitionId;
+  selectedCompetitionName = competitionName;
+
+  const title = document.getElementById('challengeTitle');
+
+  if (title) {
+    title.textContent = competitionId
+      ? `Demo challenge: ${competitionName}`
+      : 'Pick the target pixel';
+  }
+
   modal.classList.remove('hidden');
 }
 
@@ -19,22 +140,61 @@ function closeChallenge() {
   modal.classList.add('hidden');
 }
 
+// This function deliberately does not create or charge for an entry.
+function submitEntry() {
+  const xInput = document.getElementById('x');
+  const yInput = document.getElementById('y');
+
+  const x = Number(xInput.value);
+  const y = Number(yInput.value);
+
+  if (
+    xInput.value.trim() === '' ||
+    yInput.value.trim() === '' ||
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    x < 0 || x > 100 ||
+    y < 0 || y > 100
+  ) {
+    alert('Please enter valid X and Y coordinates between 0 and 100.');
+    return;
+  }
+
+  const answer =
+    `Demo answer for ${selectedCompetitionName}: X=${x}, Y=${y}. ` +
+    'This is saved only in this browser. No real entry was created.';
+
+  localStorage.setItem('pixelPickEntry', answer);
+
+  const entryText = document.getElementById('entryText');
+  if (entryText) entryText.textContent = answer;
+
+  alert(
+    'Demo answer saved. This is not a paid entry and does not enter you into a competition.'
+  );
+
+  closeChallenge();
+}
+
+// ------------------------------------------
 // Account modal
+// ------------------------------------------
+
 function openAccount() {
-  document.getElementById('accountModal').classList.remove('hidden');
+  accountModal.classList.remove('hidden');
   showAccountMessage('');
   refreshAccount();
 }
 
 function closeAccount() {
-  document.getElementById('accountModal').classList.add('hidden');
+  accountModal.classList.add('hidden');
 }
 
 function showAccountMessage(message) {
-  document.getElementById('accountMessage').textContent = message;
+  const element = document.getElementById('accountMessage');
+  if (element) element.textContent = message;
 }
 
-// Switch between sign-in and registration
 function toggleAccountMode() {
   accountMode = accountMode === 'signin' ? 'signup' : 'signin';
 
@@ -55,7 +215,10 @@ function toggleAccountMode() {
   showAccountMessage('');
 }
 
-// Check the current sign-in status
+// ------------------------------------------
+// Check sign-in status
+// ------------------------------------------
+
 async function refreshAccount() {
   const { data, error } = await supabaseClient.auth.getSession();
 
@@ -71,19 +234,28 @@ async function refreshAccount() {
     !signedIn
   );
 
-  document.getElementById('signOutButton').textContent = 'Sign out';
+  document.getElementById('accountModeButton').classList.toggle(
+    'hidden',
+    signedIn
+  );
 
   document.querySelector('#accountForm button[type="submit"]').disabled =
     signedIn;
 
+  document.getElementById('accountEmail').disabled = signedIn;
+  document.getElementById('accountPassword').disabled = signedIn;
+
   if (signedIn) {
     showAccountMessage(
-      'You are signed in. Your competition entries are not yet connected.'
+      'You are signed in. Real competition entries and payments are not enabled yet.'
     );
   }
 }
 
-// Sign in or register
+// ------------------------------------------
+// Register or sign in with Supabase Auth
+// ------------------------------------------
+
 document.getElementById('accountForm').addEventListener(
   'submit',
   async (event) => {
@@ -141,7 +313,10 @@ document.getElementById('accountForm').addEventListener(
   }
 );
 
+// ------------------------------------------
 // Sign out
+// ------------------------------------------
+
 async function signOutAccount() {
   const { error } = await supabaseClient.auth.signOut();
 
@@ -154,13 +329,19 @@ async function signOutAccount() {
 
   document.getElementById('accountForm').reset();
 
+  document.getElementById('accountTitle').textContent = 'Sign in';
+
   document.querySelector('#accountForm button[type="submit"]').textContent =
     'Sign in';
 
   document.getElementById('accountModeButton').textContent =
     'Need an account? Register';
 
+  document.getElementById('accountModeButton').classList.remove('hidden');
   document.getElementById('signOutButton').classList.add('hidden');
+
+  document.getElementById('accountEmail').disabled = false;
+  document.getElementById('accountPassword').disabled = false;
 
   document.querySelector('#accountForm button[type="submit"]').disabled =
     false;
@@ -168,17 +349,25 @@ async function signOutAccount() {
   showAccountMessage('You have signed out.');
 }
 
-// Display a previously saved demo answer
+// ------------------------------------------
+// Restore the local demo answer
+// ------------------------------------------
+
 const savedEntry = localStorage.getItem('pixelPickEntry');
 
 if (savedEntry) {
   document.getElementById('entryText').textContent = savedEntry;
 }
 
-// Handle clicks on the challenge board
+// ------------------------------------------
+// Click the challenge board to set coordinates
+// ------------------------------------------
+
 document.getElementById('board').addEventListener('click', (event) => {
   const board = event.currentTarget;
   const rect = board.getBoundingClientRect();
+
+  if (!rect.width || !rect.height) return;
 
   document.getElementById('x').value = Math.max(
     0,
@@ -191,7 +380,16 @@ document.getElementById('board').addEventListener('click', (event) => {
   );
 });
 
-// Update the account interface when sign-in status changes
+// ------------------------------------------
+// Keep the interface updated after auth changes
+// ------------------------------------------
+
 supabaseClient.auth.onAuthStateChange(() => {
   refreshAccount();
 });
+
+// ------------------------------------------
+// Load open competitions when the page starts
+// ------------------------------------------
+
+loadCompetitions();
