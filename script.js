@@ -393,3 +393,47 @@ supabaseClient.auth.onAuthStateChange(() => {
 // ------------------------------------------
 
 loadCompetitions();
+// TEST ONLY: checks the Edge Function without creating an entry.
+async function testCreateEntryFunction() {
+  const { data, error } = await supabaseClient.auth.getSession();
+
+  if (error || !data.session) {
+    console.log("TEST RESULT: Please sign in first.");
+    return;
+  }
+
+  const { data: competitions, error: competitionError } =
+    await supabaseClient
+      .from("competitions")
+      .select("id")
+      .eq("name", "iPhone 17 Pro Max Demo")
+      .limit(1);
+
+  if (competitionError || !competitions?.length) {
+    console.log("TEST RESULT: Demo competition not found.");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/create-entry`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_PUBLISHABLE_KEY,
+          "Authorization": `Bearer ${data.session.access_token}`
+        },
+        body: JSON.stringify({
+          competition_id: competitions[0].id
+        })
+      }
+    );
+
+    const result = await response.json();
+    console.log("TEST HTTP STATUS:", response.status);
+    console.log("TEST RESULT:", result);
+  } catch (error) {
+    console.log("TEST FAILED:", error.message);
+  }
+}
