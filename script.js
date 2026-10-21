@@ -87,7 +87,7 @@ async function loadCompetitions() {
       enterButton.type = 'button';
       enterButton.textContent = 'View challenge';
 
-      // This is a demonstration only. It does not create an entry.
+      // Demonstration only. This does not create an entry.
       enterButton.addEventListener('click', () => {
         openChallenge(competition.id, competition.name);
       });
@@ -121,7 +121,10 @@ async function loadCompetitions() {
 let selectedCompetitionId = null;
 let selectedCompetitionName = 'Demo challenge';
 
-function openChallenge(competitionId = null, competitionName = 'Demo challenge') {
+function openChallenge(
+  competitionId = null,
+  competitionName = 'Demo challenge'
+) {
   selectedCompetitionId = competitionId;
   selectedCompetitionName = competitionName;
 
@@ -307,7 +310,6 @@ document.getElementById('accountForm').addEventListener(
       );
     } finally {
       const { data } = await supabaseClient.auth.getSession();
-
       submitButton.disabled = Boolean(data.session);
     }
   }
@@ -393,76 +395,3 @@ supabaseClient.auth.onAuthStateChange(() => {
 // ------------------------------------------
 
 loadCompetitions();
-// TEST ONLY: checks the Edge Function without creating an entry.
-async function testCreateEntryFunction() 
-async function testCreateEntryFunction() {
-  const { data, error } = await supabaseClient.auth.getSession();
-
-  if (error || !data.session) {
-    console.log("TEST RESULT: Please sign in first.");
-    return;
-  }
-
-  const competitionId =
-    "6902af89-aa74-4933-b411-53b427577ab9";
-
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/create-entry`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${data.session.access_token}`
-        },
-        body: JSON.stringify({
-          competition_id: competitionId
-        })
-      }
-    );
-
-    const result = await response.json();
-
-    console.log("TEST HTTP STATUS:", response.status);
-    console.log("TEST RESULT:", result);
-  } catch (error) {
-    console.log("TEST FAILED:", error.message);
-  }
-}
-
-  const { data: competitions, error: competitionError } =
-    await supabaseClient
-      .from("competitions")
-      .select("id")
-      .eq("name", "iPhone 17 Pro Max Demo")
-      .limit(1);
-
-  if (competitionError || !competitions?.length) {
-    console.log("TEST RESULT: Demo competition not found.");
-    return;
-  }
-
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/create-entry`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": SUPABASE_PUBLISHABLE_KEY,
-          "Authorization": `Bearer ${data.session.access_token}`
-        },
-        body: JSON.stringify({
-          competition_id: competitions[0].id
-        })
-      }
-    );
-
-    const result = await response.json();
-    console.log("TEST HTTP STATUS:", response.status);
-    console.log("TEST RESULT:", result);
-  } catch (error) {
-    console.log("TEST FAILED:", error.message);
-  }
-}
