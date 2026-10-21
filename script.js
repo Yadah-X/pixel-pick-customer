@@ -394,6 +394,7 @@ supabaseClient.auth.onAuthStateChange(() => {
 
 loadCompetitions();
 // TEST ONLY: checks the Edge Function without creating an entry.
+async function testCreateEntryFunction() 
 async function testCreateEntryFunction() {
   const { data, error } = await supabaseClient.auth.getSession();
 
@@ -401,6 +402,34 @@ async function testCreateEntryFunction() {
     console.log("TEST RESULT: Please sign in first.");
     return;
   }
+
+  const competitionId =
+    "6902af89-aa74-4933-b411-53b427577ab9";
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/create-entry`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${data.session.access_token}`
+        },
+        body: JSON.stringify({
+          competition_id: competitionId
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    console.log("TEST HTTP STATUS:", response.status);
+    console.log("TEST RESULT:", result);
+  } catch (error) {
+    console.log("TEST FAILED:", error.message);
+  }
+}
 
   const { data: competitions, error: competitionError } =
     await supabaseClient
