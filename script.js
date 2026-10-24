@@ -816,3 +816,9 @@ supabaseClient.auth.onAuthStateChange((_event, session) => {
 
 loadCompetitions();
 refreshAccount();
+
+const accountSectionButton = document.getElementById('accountSectionButton');
+
+if (accountSectionButton) {
+  accountSectionButton.textContent = 'Account settings';
+}
