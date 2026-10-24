@@ -1,18 +1,28 @@
 
+/* =========================================================
+   PIXEL PICK — CUSTOMER WEBSITE
+   Account controls, navigation, competitions and Sandbox flow.
+   ========================================================= */
+
 const SUPABASE_URL = 'https://cxhclxtbtrsyfigqleeg.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY =
   'sb_publishable_N4pRAlpCzjTEoKR7TCYOEA_Irj7mCrv';
-
-const supabaseClient = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_PUBLISHABLE_KEY
-);
 
 const SITE_URL = 'https://pixel-pick-customer.onrender.com';
 const VERIFY_CHALLENGE_URL =
   `${SUPABASE_URL}/functions/v1/verify-skill-challenge`;
 const CREATE_PAYMENT_ORDER_URL =
   `${SUPABASE_URL}/functions/v1/create-payment-order`;
+
+// This secure history endpoint must be deployed separately.
+// Until it exists, the page will explain that history is unavailable.
+const ACCOUNT_HISTORY_URL =
+  `${SUPABASE_URL}/functions/v1/my-account-history`;
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
 
 const modal = document.getElementById('modal');
 const accountModal = document.getElementById('accountModal');
@@ -22,25 +32,71 @@ let selectedCompetitionId = null;
 let selectedCompetitionName = 'Competition';
 let activeChallengeId = null;
 let challengeBusy = false;
+let historyRequestNumber = 0;
 
-// Shared helpers
+/* -------------------------
+   Small shared helpers
+------------------------- */
 
-function setText(id, text) {
-  const element = document.getElementById(id);
-  if (element) element.textContent = text;
+function element(id) {
+  return document.getElementById(id);
+}
+
+function setText(id, value) {
+  const node = element(id);
+  if (node) node.textContent = value;
+}
+
+function showAccountMessage(message) {
+  setText('accountMessage', message);
 }
 
 function setChallengeMessage(message) {
+  setText('challengeMessage', message);
   setText('competitionMessage', message);
+}
+
+function setHidden(id, hidden) {
+  const node = element(id);
+  if (node) node.classList.toggle('hidden', hidden);
+}
+
+function makeParagraph(message) {
+  const p = document.createElement('p');
+  p.textContent = message;
+  return p;
+}
+
+function formatDate(value) {
+  if (!value) return 'Date unavailable';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Date unavailable';
+
+  return date.toLocaleString('en-ZA', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+}
+
+function formatRand(cents) {
+  const amount = Number(cents);
+  if (!Number.isFinite(amount)) return 'Price unavailable';
+
+  return new Intl.NumberFormat('en-ZA', {
+    style: 'currency',
+    currency: 'ZAR'
+  }).format(amount / 100);
 }
 
 async function getAccessToken() {
   const { data, error } = await supabaseClient.auth.getSession();
+
   if (error) throw error;
 
   const token = data.session?.access_token;
   if (!token) {
-    throw new Error('Please sign in before entering a competition.');
+    throw new Error('Please sign in before continuing.');
   }
 
   return token;
@@ -53,8 +109,8 @@ async function callEdgeFunction(url, body) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      'apikey': SUPABASE_PUBLISHABLE_KEY
+      Authorization: `Bearer ${token}`,
+      apikey: SUPABASE_PUBLISHABLE_KEY
     },
     body: JSON.stringify(body)
   });
@@ -65,33 +121,77 @@ async function callEdgeFunction(url, body) {
     throw new Error(
       typeof result.error === 'string'
         ? result.error
-        : 'The request could not be completed. Please try again.'
+        : `The server request failed (${response.status}).`
     );
   }
 
   return result;
 }
 
-// Load available competitions
+/* -------------------------
+   Three-line navigation menu
+------------------------- */
+
+function setupMenu() {
+  const toggle = element('menuToggle');
+  const panel = element('menuPanel');
+
+  if (!toggle || !panel) return;
+
+  function closeMenu() {
+    panel.classList.add('hidden');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Open navigation menu');
+  }
+
+  toggle.addEventListener('click', () => {
+    const isOpen = !panel.classList.contains('hidden');
+
+    panel.classList.toggle('hidden', isOpen);
+    toggle.setAttribute('aria-expanded', String(!isOpen));
+    toggle.setAttribute(
+      'aria-label',
+      isOpen ? 'Open navigation menu' : 'Close navigation menu'
+    );
+  });
+
+  panel.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', closeMenu);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeMenu();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (
+      !panel.contains(event.target) &&
+      !toggle.contains(event.target)
+    ) {
+      closeMenu();
+    }
+  });
+}
+
+/* -------------------------
+   Competitions
+------------------------- */
 
 async function loadCompetitions() {
-  const grid = document.getElementById('competitionGrid');
-  const message = document.getElementById('competitionMessage');
+  const grid = element('competitionGrid');
+  const message = element('competitionMessage');
 
   if (!grid) return;
 
-  grid.replaceChildren();
-
-  const loading = document.createElement('p');
-  loading.textContent = 'Loading available competitions...';
-  grid.appendChild(loading);
-
+  grid.replaceChildren(makeParagraph('Loading competitions…'));
   if (message) message.textContent = '';
 
   try {
     const { data, error } = await supabaseClient
       .from('competitions')
-      .select('id, name, prize_description, entry_price_cents, closes_at')
+      .select(
+        'id, name, prize_description, entry_price_cents, closes_at'
+      )
       .eq('status', 'open')
       .order('created_at', { ascending: false });
 
@@ -99,11 +199,12 @@ async function loadCompetitions() {
 
     grid.replaceChildren();
 
-    if (!data || data.length === 0) {
-      const empty = document.createElement('p');
-      empty.textContent =
-        'There are no open competitions at the moment. Please check back soon.';
-      grid.appendChild(empty);
+    if (!data?.length) {
+      grid.appendChild(
+        makeParagraph(
+          'There are no open competitions at the moment. Please check back soon.'
+        )
+      );
       return;
     }
 
@@ -129,59 +230,352 @@ async function loadCompetitions() {
       const description = document.createElement('p');
       description.textContent =
         competition.prize_description ||
-        'See competition rules for details.';
+        'See the competition rules for details.';
 
       const row = document.createElement('div');
       row.className = 'row';
 
       const price = document.createElement('b');
-      const cents = Number(competition.entry_price_cents);
+      price.textContent = formatRand(competition.entry_price_cents);
 
-      price.textContent = Number.isFinite(cents) && cents > 0
-        ? `R${(cents / 100).toFixed(2)}`
-        : 'Price unavailable';
-
-      const enterButton = document.createElement('button');
-      enterButton.type = 'button';
-      enterButton.textContent = 'Start skill challenge';
-      enterButton.disabled = !Number.isFinite(cents) || cents <= 0;
-
-      enterButton.addEventListener('click', () => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = 'Start skill challenge';
+      button.addEventListener('click', () => {
         openChallenge(competition.id, competition.name);
       });
 
-      row.append(price, enterButton);
+      row.append(price, button);
       pad.append(pill, title, description, row);
       card.append(visual, pad);
       grid.appendChild(card);
     });
   } catch (error) {
     console.error('Could not load competitions:', error);
-
-    grid.replaceChildren();
-
-    const problem = document.createElement('p');
-    problem.textContent =
-      'We could not load competitions. Please refresh the page and try again.';
-    grid.appendChild(problem);
-
-    if (message) {
-      message.textContent =
-        'Competition data could not be loaded. Your account has not been affected.';
-    }
+    grid.replaceChildren(
+      makeParagraph(
+        'We could not load competitions. Please refresh the page and try again.'
+      )
+    );
   }
 }
-async function openChallenge(
-  competitionId,
-  competitionName = 'Competition'
-) {
+
+/* -------------------------
+   Account modal and login
+------------------------- */
+
+function openAccount() {
+  if (accountModal) accountModal.classList.remove('hidden');
+  refreshAccount();
+}
+
+function closeAccount() {
+  if (accountModal) accountModal.classList.add('hidden');
+}
+
+function toggleAccountMode() {
+  accountMode = accountMode === 'signin' ? 'signup' : 'signin';
+
+  setText(
+    'accountTitle',
+    accountMode === 'signup' ? 'Create your account' : 'Sign in'
+  );
+
+  const submit = document.querySelector(
+    '#accountForm button[type="submit"]'
+  );
+
+  if (submit) {
+    submit.textContent = accountMode === 'signup' ? 'Register' : 'Sign in';
+  }
+
+  setText(
+    'accountModeButton',
+    accountMode === 'signup'
+      ? 'Already have an account? Sign in'
+      : 'Need an account? Register'
+  );
+
+  const password = element('accountPassword');
+  if (password) {
+    password.autocomplete =
+      accountMode === 'signup' ? 'new-password' : 'current-password';
+  }
+
+  showAccountMessage('');
+}
+
+function updateAccountInterface(session) {
+  const signedIn = Boolean(session?.user);
+  const email = session?.user?.email || '';
+
+  // Header controls
+  setHidden('accountHeaderButton', signedIn);
+  setHidden('headerSignOutButton', !signedIn);
+
+  // Account section controls
+  setHidden('accountSectionButton', signedIn);
+  setHidden('accountSectionSignOutButton', !signedIn);
+
+  // Modal controls
+  setHidden('signOutButton', !signedIn);
+  setHidden('accountModeButton', signedIn);
+
+  const submit = document.querySelector(
+    '#accountForm button[type="submit"]'
+  );
+  const emailInput = element('accountEmail');
+  const passwordInput = element('accountPassword');
+
+  if (submit) submit.disabled = signedIn;
+  if (emailInput) emailInput.disabled = signedIn;
+  if (passwordInput) passwordInput.disabled = signedIn;
+
+  setText(
+    'accountStatus',
+    signedIn
+      ? `Signed in as ${email}.`
+      : 'You are currently signed out.'
+  );
+
+  setText(
+    'entryText',
+    signedIn
+      ? 'Your challenge and entry history will appear below when the secure history service is available.'
+      : 'Sign in to view your challenge and entry history.'
+  );
+
+  setHidden('historySignInButton', signedIn);
+
+  if (signedIn) {
+    setText('accountSectionButton', '');
+    setText('accountHeaderButton', '');
+    setText('headerSignOutButton', 'Sign out');
+    setText('accountSectionSignOutButton', 'Sign out');
+    setText('signOutButton', 'Sign out');
+  } else {
+    setText('accountSectionButton', 'Sign in / Register');
+    setText('accountHeaderButton', 'Sign in / Register');
+    setText('historySignInButton', 'Sign in to view history');
+
+    if (submit) submit.textContent =
+      accountMode === 'signup' ? 'Register' : 'Sign in';
+  }
+}
+
+async function refreshAccount() {
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+
+    if (error) throw error;
+
+    updateAccountInterface(data.session);
+
+    if (data.session) {
+      await loadMyHistory();
+    } else {
+      const history = element('entryHistory');
+      if (history) {
+        history.replaceChildren(
+          makeParagraph('Sign in to view your history.')
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Could not refresh account:', error);
+    setText('accountStatus', 'Could not check your account. Please refresh.');
+  }
+}
+
+element('accountForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const email = element('accountEmail')?.value.trim();
+  const password = element('accountPassword')?.value;
+  const submit = document.querySelector(
+    '#accountForm button[type="submit"]'
+  );
+
+  if (!email || !password) {
+    showAccountMessage('Enter your email address and password.');
+    return;
+  }
+
+  if (submit) submit.disabled = true;
+  showAccountMessage('Please wait…');
+
+  try {
+    if (accountMode === 'signup') {
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: SITE_URL }
+      });
+
+      if (error) throw error;
+
+      if (data.session) {
+        showAccountMessage('Account created successfully.');
+        await refreshAccount();
+      } else {
+        showAccountMessage(
+          'Registration submitted. Check your email to confirm your account, then sign in.'
+        );
+      }
+    } else {
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      showAccountMessage('Signed in successfully.');
+      await refreshAccount();
+    }
+  } catch (error) {
+    showAccountMessage(error.message || 'Could not complete the request.');
+  } finally {
+    const { data } = await supabaseClient.auth.getSession();
+    if (submit) submit.disabled = Boolean(data.session);
+  }
+});
+
+async function signOutAccount() {
+  const { error } = await supabaseClient.auth.signOut();
+
+  if (error) {
+    showAccountMessage('Could not sign out. Please try again.');
+    return;
+  }
+
+  accountMode = 'signin';
+  element('accountForm')?.reset();
+
+  setText('accountTitle', 'Sign in');
+  setText('accountModeButton', 'Need an account? Register');
+
+  const submit = document.querySelector(
+    '#accountForm button[type="submit"]'
+  );
+
+  if (submit) {
+    submit.textContent = 'Sign in';
+    submit.disabled = false;
+  }
+
+  if (element('accountEmail')) element('accountEmail').disabled = false;
+  if (element('accountPassword')) {
+    element('accountPassword').disabled = false;
+  }
+
+  updateAccountInterface(null);
+  showAccountMessage('You have signed out.');
+  closeAccount();
+
+  const history = element('entryHistory');
+  if (history) {
+    history.replaceChildren(makeParagraph('Sign in to view your history.'));
+  }
+}
+
+/* -------------------------
+   My Challenges and Entries
+
+   This requires a separately deployed, authenticated
+   Edge Function named "my-account-history".
+   Do not remove database security policies to make it work.
+------------------------- */
+
+async function loadMyHistory() {
+  const history = element('entryHistory');
+  if (!history) return;
+
+  const requestNumber = ++historyRequestNumber;
+  history.replaceChildren(makeParagraph('Loading your history…'));
+
+  try {
+    const result = await callEdgeFunction(ACCOUNT_HISTORY_URL, {
+      action: 'list'
+    });
+
+    if (requestNumber !== historyRequestNumber) return;
+
+    if (!result.ok || !Array.isArray(result.items)) {
+      throw new Error('The account history service is not ready yet.');
+    }
+
+    history.replaceChildren();
+
+    if (result.items.length === 0) {
+      history.appendChild(
+        makeParagraph(
+          'No challenge attempts or competition entries were found for your account.'
+        )
+      );
+      return;
+    }
+
+    result.items.forEach((item) => {
+      const card = document.createElement('article');
+      card.className = 'history-card';
+
+      const title = document.createElement('h3');
+      title.textContent = item.competition_name || 'Competition';
+
+      const kind = document.createElement('p');
+      kind.textContent =
+        item.record_type === 'entry'
+          ? 'Competition entry'
+          : 'Skill challenge';
+
+      const status = document.createElement('p');
+      status.textContent = `Status: ${item.status || 'Unavailable'}`;
+
+      const date = document.createElement('p');
+      date.textContent = `Date: ${formatDate(item.created_at)}`;
+
+      card.append(title, kind, status, date);
+
+      if (item.entry_number != null) {
+        const number = document.createElement('p');
+        number.textContent = `Entry number: ${item.entry_number}`;
+        card.appendChild(number);
+      }
+
+      history.appendChild(card);
+    });
+  } catch (error) {
+    if (requestNumber !== historyRequestNumber) return;
+
+    console.info('Account history is not available yet:', error.message);
+    history.replaceChildren(
+      makeParagraph(
+        'Your history area is ready, but the secure history service still needs to be deployed. Your records have not been deleted.'
+      )
+    );
+  }
+}
+
+/* -------------------------
+   Skill challenge and Sandbox checkout
+------------------------- */
+
+function setChallengeBusy(busy) {
+  challengeBusy = busy;
+
+  const button = element('submitChallengeButton');
+  if (button) button.disabled = busy;
+}
+
+async function openChallenge(competitionId, competitionName = 'Competition') {
   selectedCompetitionId = competitionId;
   selectedCompetitionName = competitionName || 'Competition';
   activeChallengeId = null;
 
-  const { data } = await supabaseClient.auth.getSession();
+  const { data, error } = await supabaseClient.auth.getSession();
 
-  if (!data.session) {
+  if (error || !data.session) {
     openAccount();
     showAccountMessage(
       'Please sign in or register before starting a skill challenge.'
@@ -189,87 +583,60 @@ async function openChallenge(
     return;
   }
 
-  const title = document.getElementById('challengeTitle');
-  if (title) {
-    title.textContent = `Skill challenge: ${selectedCompetitionName}`;
-  }
+  setText('challengeTitle', `Skill challenge: ${selectedCompetitionName}`);
+  setChallengeMessage('Preparing your challenge…');
 
-  const xInput = document.getElementById('x');
-  const yInput = document.getElementById('y');
+  if (element('x')) element('x').value = '';
+  if (element('y')) element('y').value = '';
 
-  if (xInput) xInput.value = '';
-  if (yInput) yInput.value = '';
+  if (modal) modal.classList.remove('hidden');
 
   const target = document.querySelector('#board .target');
-
   if (target) {
-    target.textContent = '●';
     target.style.left = '50%';
     target.style.top = '50%';
     target.style.transform = 'translate(-50%, -50%)';
   }
 
-  if (modal) modal.classList.remove('hidden');
-
-  setChallengeMessage('');
-
   try {
     setChallengeBusy(true);
-    setText('challengeTitle', 'Preparing your skill challenge…');
 
     const result = await callEdgeFunction(VERIFY_CHALLENGE_URL, {
       action: 'create',
       competition_id: selectedCompetitionId
     });
 
+    // Support the response shape returned by the supplied Edge Function:
+    // { ok: true, challenge: { id, target_x, target_y } }
+    const challenge = result.challenge || result;
+
     if (
-      !result.id ||
-      !Number.isInteger(result.target_x) ||
-      !Number.isInteger(result.target_y)
+      !challenge.id ||
+      !Number.isInteger(challenge.target_x) ||
+      !Number.isInteger(challenge.target_y)
     ) {
-      throw new Error(
-        'The challenge service returned an invalid challenge.'
-      );
+      throw new Error('The challenge service returned an invalid challenge.');
     }
 
-    activeChallengeId = result.id;
+    activeChallengeId = challenge.id;
 
     if (target) {
-      target.style.left = `${result.target_x}%`;
-      target.style.top = `${result.target_y}%`;
+      target.style.left = `${challenge.target_x}%`;
+      target.style.top = `${challenge.target_y}%`;
       target.style.transform = 'translate(-50%, -50%)';
-      target.setAttribute('aria-label', 'Target pixel');
     }
 
-    setText(
-      'challengeTitle',
-      `Skill challenge: ${selectedCompetitionName}`
-    );
-
+    setText('challengeTitle', `Skill challenge: ${selectedCompetitionName}`);
     setChallengeMessage(
-      'Click the target on the board, then submit your coordinates.'
+      'Prototype challenge: the target is currently visible. Do not use this as a production skill test or enable real payments.'
     );
   } catch (error) {
-    console.error('Could not create skill challenge:', error);
-
+    console.error('Could not create challenge:', error);
     setText('challengeTitle', 'Could not start challenge');
-
-    setChallengeMessage(
-      error.message || 'Please try again.'
-    );
+    setChallengeMessage(error.message || 'Please try again.');
   } finally {
     setChallengeBusy(false);
   }
-}
-
-function setChallengeBusy(busy) {
-  challengeBusy = busy;
-
-  const button = document.querySelector(
-    '#modal button[onclick="submitEntry()"]'
-  );
-
-  if (button) button.disabled = busy;
 }
 
 function closeChallenge() {
@@ -278,17 +645,17 @@ function closeChallenge() {
   activeChallengeId = null;
   challengeBusy = false;
 }
+
 async function submitEntry() {
   if (challengeBusy) return;
 
-  const xInput = document.getElementById('x');
-  const yInput = document.getElementById('y');
-
+  const xInput = element('x');
+  const yInput = element('y');
   const x = Number(xInput?.value);
   const y = Number(yInput?.value);
 
   if (!activeChallengeId || !selectedCompetitionId) {
-    alert('Please start a new skill challenge first.');
+    setChallengeMessage('Please start a new challenge first.');
     return;
   }
 
@@ -300,8 +667,8 @@ async function submitEntry() {
     x < 0 || x > 100 ||
     y < 0 || y > 100
   ) {
-    alert(
-      'Please select a point on the board or enter whole-number X and Y coordinates from 0 to 100.'
+    setChallengeMessage(
+      'Choose whole-number X and Y coordinates from 0 to 100.'
     );
     return;
   }
@@ -310,42 +677,27 @@ async function submitEntry() {
     setChallengeBusy(true);
     setChallengeMessage('Checking your answer…');
 
-    const verification = await callEdgeFunction(
-      VERIFY_CHALLENGE_URL,
-      {
-        action: 'verify',
-        challenge_id: activeChallengeId,
-        x,
-        y
-      }
-    );
+    const verification = await callEdgeFunction(VERIFY_CHALLENGE_URL, {
+      action: 'verify',
+      challenge_id: activeChallengeId,
+      x,
+      y
+    });
 
     if (!verification.solved) {
-      const remaining = verification.attempts_remaining;
-
       setChallengeMessage(
         verification.message ||
-        (
-          Number.isInteger(remaining)
-            ? `Not quite. ${remaining} attempts remaining.`
-            : 'Not quite. Please try again.'
-        )
+        'That answer was not accepted. Please try again.'
       );
-
       return;
     }
 
-    setChallengeMessage(
-      'Challenge solved. Preparing secure Sandbox checkout…'
-    );
+    setChallengeMessage('Challenge solved. Preparing Sandbox checkout…');
 
-    const orderResult = await callEdgeFunction(
-      CREATE_PAYMENT_ORDER_URL,
-      {
-        competition_id: selectedCompetitionId,
-        challenge_id: activeChallengeId
-      }
-    );
+    const orderResult = await callEdgeFunction(CREATE_PAYMENT_ORDER_URL, {
+      competition_id: selectedCompetitionId,
+      challenge_id: activeChallengeId
+    });
 
     if (
       !orderResult.ok ||
@@ -354,243 +706,41 @@ async function submitEntry() {
       orderResult.sandbox !== true
     ) {
       throw new Error(
-        'Sandbox checkout could not be prepared. No payment was submitted.'
+        'Sandbox checkout was not confirmed as ready. No payment was submitted.'
       );
     }
 
-    // PayFast requires a POST form with signed checkout fields.
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = orderResult.checkout.url;
     form.acceptCharset = 'UTF-8';
     form.style.display = 'none';
 
-    Object.entries(orderResult.checkout.fields).forEach(
-      ([name, value]) => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = name;
-        input.value = String(value);
-        form.appendChild(input);
-      }
-    );
+    Object.entries(orderResult.checkout.fields).forEach(([name, value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = String(value);
+      form.appendChild(input);
+    });
 
     document.body.appendChild(form);
     form.submit();
-
   } catch (error) {
     console.error('Challenge or checkout failed:', error);
-
     setChallengeMessage(
-      `${error.message || 'Something went wrong.'} ` +
-      'No entry is confirmed unless PayFast payment is verified by the server.'
+      `${error.message || 'Something went wrong.'} Payment is not confirmed unless the server verifies it.`
     );
-
   } finally {
     setChallengeBusy(false);
   }
 }
-function openAccount() {
-  if (accountModal) accountModal.classList.remove('hidden');
 
-  showAccountMessage('');
-  refreshAccount();
-}
+/* -------------------------
+   Board coordinate selection
+------------------------- */
 
-function closeAccount() {
-  if (accountModal) accountModal.classList.add('hidden');
-}
-
-function showAccountMessage(message) {
-  const element = document.getElementById('accountMessage');
-  if (element) element.textContent = message;
-}
-
-function toggleAccountMode() {
-  accountMode = accountMode === 'signin' ? 'signup' : 'signin';
-
-  setText(
-    'accountTitle',
-    accountMode === 'signup' ? 'Create your account' : 'Sign in'
-  );
-
-  const submitButton = document.querySelector(
-    '#accountForm button[type="submit"]'
-  );
-
-  if (submitButton) {
-    submitButton.textContent =
-      accountMode === 'signup' ? 'Register' : 'Sign in';
-  }
-
-  setText(
-    'accountModeButton',
-    accountMode === 'signup'
-      ? 'Already have an account? Sign in'
-      : 'Need an account? Register'
-  );
-
-  const password = document.getElementById('accountPassword');
-
-  if (password) {
-    password.autocomplete =
-      accountMode === 'signup' ? 'new-password' : 'current-password';
-  }
-
-  showAccountMessage('');
-}
-
-async function refreshAccount() {
-  const { data, error } = await supabaseClient.auth.getSession();
-
-  if (error) {
-    showAccountMessage(
-      'Could not check your session. Please try again.'
-    );
-    return;
-  }
-
-  const signedIn = Boolean(data.session);
-
-  const signOutButton = document.getElementById('signOutButton');
-  const modeButton = document.getElementById('accountModeButton');
-  const submitButton = document.querySelector(
-    '#accountForm button[type="submit"]'
-  );
-  const email = document.getElementById('accountEmail');
-  const password = document.getElementById('accountPassword');
-
-  if (signOutButton) {
-    signOutButton.classList.toggle('hidden', !signedIn);
-  }
-
-  if (modeButton) {
-    modeButton.classList.toggle('hidden', signedIn);
-  }
-
-  if (submitButton) submitButton.disabled = signedIn;
-  if (email) email.disabled = signedIn;
-  if (password) password.disabled = signedIn;
-
-  if (signedIn) {
-    showAccountMessage(
-      'You are signed in. Use an available competition to start its skill challenge. Payments remain in Sandbox.'
-    );
-  }
-}
-
-document.getElementById('accountForm')?.addEventListener(
-  'submit',
-  async (event) => {
-    event.preventDefault();
-
-    const email = document.getElementById('accountEmail').value.trim();
-    const password = document.getElementById('accountPassword').value;
-
-    const submitButton = document.querySelector(
-      '#accountForm button[type="submit"]'
-    );
-
-    if (submitButton) submitButton.disabled = true;
-
-    showAccountMessage('Please wait…');
-
-    try {
-      if (accountMode === 'signup') {
-        const { data, error } = await supabaseClient.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: SITE_URL
-          }
-        });
-
-        if (error) throw error;
-
-        if (data.session) {
-          showAccountMessage(
-            'Account created and signed in successfully.'
-          );
-        } else {
-          showAccountMessage(
-            'Registration submitted. Check your email to confirm your account before signing in.'
-          );
-        }
-      } else {
-        const { error } =
-          await supabaseClient.auth.signInWithPassword({
-            email,
-            password
-          });
-
-        if (error) throw error;
-
-        showAccountMessage('Signed in successfully.');
-      }
-
-      await refreshAccount();
-
-    } catch (error) {
-      showAccountMessage(
-        error.message || 'Something went wrong. Please try again.'
-      );
-
-    } finally {
-      const { data } = await supabaseClient.auth.getSession();
-
-      if (submitButton) {
-        submitButton.disabled = Boolean(data.session);
-      }
-    }
-  }
-);
-async function signOutAccount() {
-  const { error } = await supabaseClient.auth.signOut();
-
-  if (error) {
-    showAccountMessage('Could not sign out. Please try again.');
-    return;
-  }
-
-  accountMode = 'signin';
-
-  document.getElementById('accountForm')?.reset();
-  setText('accountTitle', 'Sign in');
-
-  const submitButton = document.querySelector(
-    '#accountForm button[type="submit"]'
-  );
-
-  if (submitButton) {
-    submitButton.textContent = 'Sign in';
-    submitButton.disabled = false;
-  }
-
-  const modeButton = document.getElementById('accountModeButton');
-
-  if (modeButton) {
-    modeButton.textContent = 'Need an account? Register';
-    modeButton.classList.remove('hidden');
-  }
-
-  const signOutButton = document.getElementById('signOutButton');
-
-  if (signOutButton) {
-    signOutButton.classList.add('hidden');
-  }
-
-  const email = document.getElementById('accountEmail');
-  const password = document.getElementById('accountPassword');
-
-  if (email) email.disabled = false;
-  if (password) password.disabled = false;
-
-  showAccountMessage('You have signed out.');
-}
-
-// Click the challenge board to set coordinates
-
-document.getElementById('board')?.addEventListener('click', (event) => {
+element('board')?.addEventListener('click', (event) => {
   const board = event.currentTarget;
   const rect = board.getBoundingClientRect();
 
@@ -598,41 +748,35 @@ document.getElementById('board')?.addEventListener('click', (event) => {
 
   const x = Math.max(
     0,
-    Math.min(
-      100,
-      Math.round(((event.clientX - rect.left) / rect.width) * 100)
-    )
+    Math.min(100, Math.round(((event.clientX - rect.left) / rect.width) * 100))
   );
 
   const y = Math.max(
     0,
-    Math.min(
-      100,
-      Math.round(((event.clientY - rect.top) / rect.height) * 100)
-    )
+    Math.min(100, Math.round(((event.clientY - rect.top) / rect.height) * 100))
   );
 
-  const xInput = document.getElementById('x');
-  const yInput = document.getElementById('y');
-
-  if (xInput) xInput.value = x;
-  if (yInput) yInput.value = y;
+  if (element('x')) element('x').value = x;
+  if (element('y')) element('y').value = y;
 });
 
-// Handle PayFast return safely.
-// A return to the site does NOT prove payment succeeded.
+/* -------------------------
+   PayFast return message
+------------------------- */
 
 (function handlePaymentReturn() {
   const params = new URLSearchParams(window.location.search);
   const payment = params.get('payment');
 
   if (payment === 'returned') {
-    setChallengeMessage(
-      'You returned from PayFast. Payment is not confirmed by this page; the server must verify it before an entry is counted.'
+    setText(
+      'competitionMessage',
+      'You returned from PayFast. This page alone cannot confirm payment.'
     );
   } else if (payment === 'cancelled') {
-    setChallengeMessage(
-      'Checkout was cancelled. No entry is confirmed unless the server verifies a successful payment.'
+    setText(
+      'competitionMessage',
+      'Checkout was cancelled. No entry is confirmed by this page.'
     );
   }
 
@@ -641,23 +785,34 @@ document.getElementById('board')?.addEventListener('click', (event) => {
     params.delete('order_id');
 
     const query = params.toString();
-
     const cleanUrl =
-      `${window.location.pathname}` +
-      `${query ? `?${query}` : ''}` +
-      `${window.location.hash}`;
+      window.location.pathname +
+      (query ? `?${query}` : '') +
+      window.location.hash;
 
     window.history.replaceState({}, document.title, cleanUrl);
   }
 })();
 
-// Keep the interface updated after authentication changes
+/* -------------------------
+   Start the page
+------------------------- */
 
-supabaseClient.auth.onAuthStateChange(() => {
-  refreshAccount();
+setupMenu();
+
+supabaseClient.auth.onAuthStateChange((_event, session) => {
+  updateAccountInterface(session);
+
+  // Avoid making additional auth calls inside the auth callback.
+  if (session?.user) {
+    loadMyHistory();
+  } else {
+    const history = element('entryHistory');
+    if (history) {
+      history.replaceChildren(makeParagraph('Sign in to view your history.'));
+    }
+  }
 });
-
-// Load competitions when the page starts
 
 loadCompetitions();
 refreshAccount();
