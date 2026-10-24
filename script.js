@@ -1,7 +1,8 @@
 
 /* =========================================================
    PIXEL PICK — CUSTOMER WEBSITE
-   Account controls, navigation, competitions and Sandbox flow.
+   Accounts, password reset, navigation, competitions,
+   challenge verification and Sandbox checkout.
    ========================================================= */
 
 const SUPABASE_URL = 'https://cxhclxtbtrsyfigqleeg.supabase.co';
@@ -9,13 +10,13 @@ const SUPABASE_PUBLISHABLE_KEY =
   'sb_publishable_N4pRAlpCzjTEoKR7TCYOEA_Irj7mCrv';
 
 const SITE_URL = 'https://pixel-pick-customer.onrender.com';
+
 const VERIFY_CHALLENGE_URL =
   `${SUPABASE_URL}/functions/v1/verify-skill-challenge`;
+
 const CREATE_PAYMENT_ORDER_URL =
   `${SUPABASE_URL}/functions/v1/create-payment-order`;
 
-// This secure history endpoint must be deployed separately.
-// Until it exists, the page will explain that history is unavailable.
 const ACCOUNT_HISTORY_URL =
   `${SUPABASE_URL}/functions/v1/my-account-history`;
 
@@ -34,10 +35,6 @@ let activeChallengeId = null;
 let challengeBusy = false;
 let historyRequestNumber = 0;
 
-/* -------------------------
-   Small shared helpers
-------------------------- */
-
 function element(id) {
   return document.getElementById(id);
 }
@@ -45,15 +42,6 @@ function element(id) {
 function setText(id, value) {
   const node = element(id);
   if (node) node.textContent = value;
-}
-
-function showAccountMessage(message) {
-  setText('accountMessage', message);
-}
-
-function setChallengeMessage(message) {
-  setText('challengeMessage', message);
-  setText('competitionMessage', message);
 }
 
 function setHidden(id, hidden) {
@@ -65,6 +53,15 @@ function makeParagraph(message) {
   const p = document.createElement('p');
   p.textContent = message;
   return p;
+}
+
+function showAccountMessage(message) {
+  setText('accountMessage', message);
+}
+
+function setChallengeMessage(message) {
+  setText('challengeMessage', message);
+  setText('competitionMessage', message);
 }
 
 function formatDate(value) {
@@ -91,7 +88,6 @@ function formatRand(cents) {
 
 async function getAccessToken() {
   const { data, error } = await supabaseClient.auth.getSession();
-
   if (error) throw error;
 
   const token = data.session?.access_token;
@@ -129,7 +125,7 @@ async function callEdgeFunction(url, body) {
 }
 
 /* -------------------------
-   Three-line navigation menu
+   Navigation menu
 ------------------------- */
 
 function setupMenu() {
@@ -144,14 +140,15 @@ function setupMenu() {
     toggle.setAttribute('aria-label', 'Open navigation menu');
   }
 
-  toggle.addEventListener('click', () => {
-    const isOpen = !panel.classList.contains('hidden');
+  toggle.addEventListener('click', (event) => {
+    event.stopPropagation();
 
-    panel.classList.toggle('hidden', isOpen);
-    toggle.setAttribute('aria-expanded', String(!isOpen));
+    const open = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', !open);
+    toggle.setAttribute('aria-expanded', String(open));
     toggle.setAttribute(
       'aria-label',
-      isOpen ? 'Open navigation menu' : 'Close navigation menu'
+      open ? 'Close navigation menu' : 'Open navigation menu'
     );
   });
 
@@ -164,10 +161,7 @@ function setupMenu() {
   });
 
   document.addEventListener('click', (event) => {
-    if (
-      !panel.contains(event.target) &&
-      !toggle.contains(event.target)
-    ) {
+    if (!panel.contains(event.target) && !toggle.contains(event.target)) {
       closeMenu();
     }
   });
@@ -180,7 +174,6 @@ function setupMenu() {
 async function loadCompetitions() {
   const grid = element('competitionGrid');
   const message = element('competitionMessage');
-
   if (!grid) return;
 
   grid.replaceChildren(makeParagraph('Loading competitions…'));
@@ -189,9 +182,7 @@ async function loadCompetitions() {
   try {
     const { data, error } = await supabaseClient
       .from('competitions')
-      .select(
-        'id, name, prize_description, entry_price_cents, closes_at'
-      )
+      .select('id, name, prize_description, entry_price_cents, closes_at')
       .eq('status', 'open')
       .order('created_at', { ascending: false });
 
@@ -261,7 +252,7 @@ async function loadCompetitions() {
 }
 
 /* -------------------------
-   Account modal and login
+   Account and password reset
 ------------------------- */
 
 function openAccount() {
@@ -271,6 +262,58 @@ function openAccount() {
 
 function closeAccount() {
   if (accountModal) accountModal.classList.add('hidden');
+}
+
+function setupForgotPassword() {
+  const form = element('accountForm');
+  const passwordInput = element('accountPassword');
+
+  if (!form || !passwordInput || element('forgotPasswordButton')) return;
+
+  const button = document.createElement('button');
+  button.id = 'forgotPasswordButton';
+  button.type = 'button';
+  button.textContent = 'Forgot password?';
+  button.className = 'forgot-password-button';
+
+  passwordInput.insertAdjacentElement('afterend', button);
+
+  button.addEventListener('click', async () => {
+    const email = element('accountEmail')?.value.trim();
+
+    if (!email) {
+      showAccountMessage(
+        'Enter your email address first, then select Forgot password?'
+      );
+      element('accountEmail')?.focus();
+      return;
+    }
+
+    button.disabled = true;
+    showAccountMessage('Sending password-reset email…');
+
+    try {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(
+        email,
+        {
+          redirectTo: `${SITE_URL}/?reset-password=true`
+        }
+      );
+
+      if (error) throw error;
+
+      showAccountMessage(
+        'If an account exists for that email, a password-reset email will be sent. Check your inbox and spam folder.'
+      );
+    } catch (error) {
+      console.error('Password reset request failed:', error);
+      showAccountMessage(
+        error.message || 'Could not request a password reset. Please try again.'
+      );
+    } finally {
+      button.disabled = false;
+    }
+  });
 }
 
 function toggleAccountMode() {
@@ -302,6 +345,7 @@ function toggleAccountMode() {
       accountMode === 'signup' ? 'new-password' : 'current-password';
   }
 
+  setHidden('forgotPasswordButton', accountMode !== 'signin');
   showAccountMessage('');
 }
 
@@ -309,17 +353,33 @@ function updateAccountInterface(session) {
   const signedIn = Boolean(session?.user);
   const email = session?.user?.email || '';
 
-  // Header controls
+  // Header: show Sign in when signed out, Sign out when signed in.
   setHidden('accountHeaderButton', signedIn);
   setHidden('headerSignOutButton', !signedIn);
 
-  // Account section controls
-  setHidden('accountSectionButton', signedIn);
+  // My Account: keep the button visible in BOTH states.
+  // This fixes the blank/missing account button.
+  setHidden('accountSectionButton', false);
   setHidden('accountSectionSignOutButton', !signedIn);
 
-  // Modal controls
+  setText(
+    'accountSectionButton',
+    signedIn ? 'Account settings' : 'Sign in / Register'
+  );
+
+  setText(
+    'accountHeaderButton',
+    'Sign in / Register'
+  );
+
+  setText('headerSignOutButton', 'Sign out');
+  setText('accountSectionSignOutButton', 'Sign out');
+  setText('signOutButton', 'Sign out');
+
+  // Modal account controls.
   setHidden('signOutButton', !signedIn);
   setHidden('accountModeButton', signedIn);
+  setHidden('forgotPasswordButton', signedIn || accountMode !== 'signin');
 
   const submit = document.querySelector(
     '#accountForm button[type="submit"]'
@@ -341,24 +401,14 @@ function updateAccountInterface(session) {
   setText(
     'entryText',
     signedIn
-      ? 'Your challenge and entry history will appear below when the secure history service is available.'
+      ? 'Your challenge and entry history will appear below.'
       : 'Sign in to view your challenge and entry history.'
   );
 
   setHidden('historySignInButton', signedIn);
 
-  if (signedIn) {
-    setText('accountSectionButton', '');
-    setText('accountHeaderButton', '');
-    setText('headerSignOutButton', 'Sign out');
-    setText('accountSectionSignOutButton', 'Sign out');
-    setText('signOutButton', 'Sign out');
-  } else {
-    setText('accountSectionButton', 'Sign in / Register');
-    setText('accountHeaderButton', 'Sign in / Register');
-    setText('historySignInButton', 'Sign in to view history');
-
-    if (submit) submit.textContent =
+  if (!signedIn && submit) {
+    submit.textContent =
       accountMode === 'signup' ? 'Register' : 'Sign in';
   }
 }
@@ -366,7 +416,6 @@ function updateAccountInterface(session) {
 async function refreshAccount() {
   try {
     const { data, error } = await supabaseClient.auth.getSession();
-
     if (error) throw error;
 
     updateAccountInterface(data.session);
@@ -458,7 +507,6 @@ async function signOutAccount() {
   const submit = document.querySelector(
     '#accountForm button[type="submit"]'
   );
-
   if (submit) {
     submit.textContent = 'Sign in';
     submit.disabled = false;
@@ -480,11 +528,7 @@ async function signOutAccount() {
 }
 
 /* -------------------------
-   My Challenges and Entries
-
-   This requires a separately deployed, authenticated
-   Edge Function named "my-account-history".
-   Do not remove database security policies to make it work.
+   Account history
 ------------------------- */
 
 async function loadMyHistory() {
@@ -551,19 +595,18 @@ async function loadMyHistory() {
     console.info('Account history is not available yet:', error.message);
     history.replaceChildren(
       makeParagraph(
-        'Your history area is ready, but the secure history service still needs to be deployed. Your records have not been deleted.'
+        'Your history is temporarily unavailable. Please try again later.'
       )
     );
   }
 }
 
 /* -------------------------
-   Skill challenge and Sandbox checkout
+   Skill challenge and checkout
 ------------------------- */
 
 function setChallengeBusy(busy) {
   challengeBusy = busy;
-
   const button = element('submitChallengeButton');
   if (button) button.disabled = busy;
 }
@@ -606,8 +649,6 @@ async function openChallenge(competitionId, competitionName = 'Competition') {
       competition_id: selectedCompetitionId
     });
 
-    // Support the response shape returned by the supplied Edge Function:
-    // { ok: true, challenge: { id, target_x, target_y } }
     const challenge = result.challenge || result;
 
     if (
@@ -626,7 +667,6 @@ async function openChallenge(competitionId, competitionName = 'Competition') {
       target.style.transform = 'translate(-50%, -50%)';
     }
 
-    setText('challengeTitle', `Skill challenge: ${selectedCompetitionName}`);
     setChallengeMessage(
       'Prototype challenge: the target is currently visible. Do not use this as a production skill test or enable real payments.'
     );
@@ -641,7 +681,6 @@ async function openChallenge(competitionId, competitionName = 'Competition') {
 
 function closeChallenge() {
   if (modal) modal.classList.add('hidden');
-
   activeChallengeId = null;
   challengeBusy = false;
 }
@@ -686,8 +725,7 @@ async function submitEntry() {
 
     if (!verification.solved) {
       setChallengeMessage(
-        verification.message ||
-        'That answer was not accepted. Please try again.'
+        verification.message || 'That answer was not accepted. Please try again.'
       );
       return;
     }
@@ -737,7 +775,7 @@ async function submitEntry() {
 }
 
 /* -------------------------
-   Board coordinate selection
+   Board coordinates
 ------------------------- */
 
 element('board')?.addEventListener('click', (event) => {
@@ -761,7 +799,7 @@ element('board')?.addEventListener('click', (event) => {
 });
 
 /* -------------------------
-   PayFast return message
+   Payment return message
 ------------------------- */
 
 (function handlePaymentReturn() {
@@ -799,11 +837,11 @@ element('board')?.addEventListener('click', (event) => {
 ------------------------- */
 
 setupMenu();
+setupForgotPassword();
 
 supabaseClient.auth.onAuthStateChange((_event, session) => {
   updateAccountInterface(session);
 
-  // Avoid making additional auth calls inside the auth callback.
   if (session?.user) {
     loadMyHistory();
   } else {
@@ -817,8 +855,16 @@ supabaseClient.auth.onAuthStateChange((_event, session) => {
 loadCompetitions();
 refreshAccount();
 
-const accountSectionButton = document.getElementById('accountSectionButton');
+// Wire up existing account buttons if the HTML does not already do so.
+element('accountHeaderButton')?.addEventListener('click', openAccount);
+element('accountSectionButton')?.addEventListener('click', openAccount);
+element('historySignInButton')?.addEventListener('click', openAccount);
 
-if (accountSectionButton) {
-  accountSectionButton.textContent = 'Account settings';
-}
+element('accountModeButton')?.addEventListener('click', toggleAccountMode);
+
+element('headerSignOutButton')?.addEventListener('click', signOutAccount);
+element('accountSectionSignOutButton')?.addEventListener('click', signOutAccount);
+element('signOutButton')?.addEventListener('click', signOutAccount);
+
+// Keep the account modal easy to close when its close control exists.
+element('closeAccountButton')?.addEventListener('click', closeAccount);
