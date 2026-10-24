@@ -10,19 +10,53 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
   <header class="nav">
-    <a class="logo" href="#">PIXEL<span>PICK</span></a>
+    <a class="logo" href="#" aria-label="Pixel Pick home">
+      PIXEL<span>PICK</span>
+    </a>
 
-    <nav aria-label="Main navigation">
+    <button
+      class="menu-toggle outline"
+      id="menuToggle"
+      type="button"
+      aria-label="Open navigation menu"
+      aria-controls="menuPanel"
+      aria-expanded="false"
+    >
+      <span aria-hidden="true" class="hamburger">
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+      <span class="menu-label">Menu</span>
+    </button>
+
+    <nav id="menuPanel" class="menu-panel hidden" aria-label="Main navigation">
       <a href="#competitions">Competitions</a>
       <a href="#how">How it works</a>
-      <a href="#entries">My Entries</a>
+      <a href="#entries">My Challenges &amp; Entries</a>
+      <a href="#accountArea">My Account</a>
     </nav>
 
-    <button class="outline" type="button" onclick="openAccount()">
-      Sign in / Register
-    </button>
+    <div class="nav-account">
+      <button
+        class="outline"
+        id="accountHeaderButton"
+        type="button"
+        onclick="openAccount()"
+      >
+        Sign in / Register
+      </button>
+
+      <button
+        class="outline hidden"
+        id="headerSignOutButton"
+        type="button"
+        onclick="signOutAccount()"
+      >
+        Sign out
+      </button>
+    </div>
   </header>
 
   <main>
@@ -46,14 +80,12 @@
     </section>
 
     <section id="competitions" class="section">
-      <p class="eyebrow">LIVE NOW</p>
+      <p class="eyebrow">AVAILABLE COMPETITIONS</p>
       <h2>Featured competitions</h2>
-
       <div class="grid" id="competitionGrid" aria-live="polite">
         <p>Loading competitions...</p>
       </div>
-
-      <p id="competitionMessage" role="status"></p>
+      <p id="competitionMessage" role="status" aria-live="polite"></p>
     </section>
 
     <section id="how" class="section dark">
@@ -66,28 +98,66 @@
           <h3>Choose</h3>
           <p>Pick a competition and review its challenge and rules.</p>
         </div>
-
         <div>
           <strong>02</strong>
           <h3>Enter</h3>
           <p>Follow the instructions and submit your skill-based answer.</p>
         </div>
-
         <div>
           <strong>03</strong>
-          <h3>Win</h3>
+          <h3>Results</h3>
           <p>Results and winners must be verified according to the published rules.</p>
         </div>
       </div>
     </section>
 
     <section id="entries" class="section account">
-      <h2>Your entries</h2>
-      <p id="entryText">Sign in to view your entries.</p>
+      <p class="eyebrow">YOUR ACCOUNT</p>
+      <h2>My Challenges &amp; Entries</h2>
+      <p id="entryText" role="status" aria-live="polite">
+        Sign in to view your challenge and entry history.
+      </p>
+
+      <div id="entryHistory" class="entry-history" aria-live="polite">
+        <p>Your history will appear here after you sign in.</p>
+      </div>
+
+      <button
+        class="cta"
+        id="historySignInButton"
+        type="button"
+        onclick="openAccount()"
+      >
+        Sign in to view history
+      </button>
+    </section>
+
+    <section id="accountArea" class="section account">
+      <p class="eyebrow">ACCOUNT SETTINGS</p>
+      <h2>My Account</h2>
+      <p id="accountStatus" role="status" aria-live="polite">
+        You are currently signed out.
+      </p>
+      <button
+        class="cta"
+        id="accountSectionButton"
+        type="button"
+        onclick="openAccount()"
+      >
+        Sign in / Register
+      </button>
+      <button
+        class="outline hidden"
+        id="accountSectionSignOutButton"
+        type="button"
+        onclick="signOutAccount()"
+      >
+        Sign out
+      </button>
     </section>
   </main>
 
-  <!-- Account modal -->
+  <!-- Sign-in and registration modal -->
   <div id="accountModal" class="modal hidden">
     <div
       class="modal-box"
@@ -103,7 +173,7 @@
       >×</button>
 
       <p class="eyebrow">PIXEL PICK ACCOUNT</p>
-      <h2 id="accountTitle">Register or sign in</h2>
+      <h2 id="accountTitle">Sign in</h2>
 
       <form id="accountForm">
         <label for="accountEmail">Email address</label>
@@ -133,7 +203,9 @@
         id="accountModeButton"
         type="button"
         onclick="toggleAccountMode()"
-      >Need an account? Register</button>
+      >
+        Need an account? Register
+      </button>
 
       <p id="accountMessage" role="status" aria-live="polite"></p>
 
@@ -142,11 +214,13 @@
         id="signOutButton"
         type="button"
         onclick="signOutAccount()"
-      >Sign out</button>
+      >
+        Sign out
+      </button>
     </div>
   </div>
 
-  <!-- Demo skill challenge modal -->
+  <!-- Skill challenge modal -->
   <div id="modal" class="modal hidden">
     <div
       class="modal-box"
@@ -161,44 +235,51 @@
         aria-label="Close challenge"
       >×</button>
 
-      <p class="eyebrow">DEMO CHALLENGE</p>
+      <p class="eyebrow">SKILL CHALLENGE</p>
       <h2 id="challengeTitle">Pick the target pixel</h2>
-
-      <p>Click anywhere on the board or adjust the coordinates below.</p>
+      <p>Click the board to select coordinates, then submit your answer.</p>
 
       <div
         class="board"
         id="board"
         role="img"
-        aria-label="Demo pixel challenge board"
+        aria-label="Skill challenge board"
       >
-        <div class="target">?</div>
+        <div class="target">●</div>
       </div>
 
       <div class="coords">
-        <label for="x">X
+        <label for="x">
+          X
           <input id="x" type="number" min="0" max="100" value="50">
         </label>
-
-        <label for="y">Y
+        <label for="y">
+          Y
           <input id="y" type="number" min="0" max="100" value="50">
         </label>
       </div>
 
-      <button class="cta full" type="button" onclick="submitEntry()">
-        Submit demo entry
+      <button
+        class="cta full"
+        id="submitChallengeButton"
+        type="button"
+        onclick="submitEntry()"
+      >
+        Submit answer
       </button>
 
-      <small>Prototype only — no payment or real entry is processed.</small>
+      <p id="challengeMessage" role="status" aria-live="polite"></p>
+      <small>
+        Prototype: payment and entry confirmation depend on server verification.
+      </small>
     </div>
   </div>
 
   <footer>
-    © 2026 Pixel Pick · Prototype only · No real payments or prizes are processed.
+    © 2026 Pixel Pick · Prototype · Real payments remain disabled until testing and review are complete.
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
-
 </body>
 </html>
