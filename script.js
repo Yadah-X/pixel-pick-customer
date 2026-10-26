@@ -860,7 +860,6 @@ element('accountHeaderButton')?.addEventListener('click', openAccount);
 element('accountSectionButton')?.addEventListener('click', openAccount);
 element('historySignInButton')?.addEventListener('click', openAccount);
 
-element('accountModeButton')?.addEventListener('click', toggleAccountMode);
 
 element('headerSignOutButton')?.addEventListener('click', signOutAccount);
 element('accountSectionSignOutButton')?.addEventListener('click', signOutAccount);
