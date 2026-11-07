@@ -867,3 +867,70 @@ element('signOutButton')?.addEventListener('click', signOutAccount);
 
 // Keep the account modal easy to close when its close control exists.
 element('closeAccountButton')?.addEventListener('click', closeAccount);
+/* -------------------------
+   Customer Support
+------------------------- */
+
+element('supportForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  const button = element('supportSubmitButton');
+  const status = element('supportMessageStatus');
+
+  const topic = element('supportTopic')?.value.trim();
+  const message = element('supportMessage')?.value.trim();
+
+  if (status) status.textContent = '';
+
+  try {
+    if (button) button.disabled = true;
+
+    const { data, error: authError } =
+      await supabaseClient.auth.getUser();
+
+    if (authError) throw authError;
+
+    const user = data.user;
+
+    if (!user || !user.email) {
+      throw new Error(
+        'Please sign in before submitting a support enquiry.'
+      );
+    }
+
+    if (!topic || !message || message.length < 10) {
+      throw new Error(
+        'Please select a topic and enter a message of at least 10 characters.'
+      );
+    }
+
+    const { error } = await supabaseClient
+      .from('support_requests')
+      .insert({
+        user_id: user.id,
+        email: user.email,
+        topic,
+        message
+      });
+
+    if (error) throw error;
+
+    if (status) {
+      status.textContent =
+        'Thank you! Your support enquiry has been received.';
+    }
+
+    form.reset();
+
+  } catch (error) {
+    console.error('Support enquiry failed:', error);
+
+    if (status) {
+      status.textContent =
+        error.message || 'Could not submit your enquiry. Please try again.';
+    }
+  } finally {
+    if (button) button.disabled = false;
+  }
+});
