@@ -573,6 +573,32 @@ function closeAccount() {
   }
 }
 
+/* =========================================================
+   AUTOMATIC HOME REDIRECT AFTER SIGN-IN / REGISTRATION
+   ========================================================= */
+
+function finishSuccessfulAuthentication() {
+  // Close the sign-in or registration window.
+  closeAccount();
+
+  // Close the navigation menu if it is open.
+  closeNavigationMenu();
+
+  // Navigate to Home using the existing navigation handler.
+  const homeLink = document.querySelector('a[href="#home"]');
+
+  if (homeLink) {
+    homeLink.click();
+  } else {
+    // Fallback in case the Home link is unavailable.
+    window.location.hash = 'home';
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+}
+
 function setupForgotPassword() {
   const form = element('accountForm');
   const passwordInput = element('accountPassword');
@@ -853,7 +879,7 @@ function updateAccountInterface(session) {
   );
 
   setHidden('historySignInButton', signedIn);
-   setHidden('clearHistoryButton', !signedIn);
+  setHidden('clearHistoryButton', !signedIn);
 
   if (!signedIn && submit) {
     submit.textContent =
@@ -1229,6 +1255,9 @@ element('accountForm')?.addEventListener(
 
           await refreshAccount();
 
+          // Automatically close the account window and go Home.
+          finishSuccessfulAuthentication();
+
         } else {
           if (element('accountPassword')) {
             element('accountPassword').value = '';
@@ -1258,6 +1287,9 @@ element('accountForm')?.addEventListener(
         );
 
         await refreshAccount();
+
+        // Automatically close the account window and go Home.
+        finishSuccessfulAuthentication();
       }
 
     } catch (error) {
@@ -1349,7 +1381,6 @@ async function signOutAccount(reason = 'manual') {
     );
   }
 }
-
 
 /* =========================================================
    ACCOUNT HISTORY — LOAD AND CLEAR HISTORY
@@ -1598,7 +1629,6 @@ document.addEventListener(
     }
   }
 );
-
 
 /* =========================================================
    SKILL CHALLENGE AND CHECKOUT
