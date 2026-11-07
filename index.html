@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -256,6 +255,32 @@
       <h2 id="accountTitle">Sign in</h2>
 
       <form id="accountForm">
+
+        <!-- REGISTRATION-ONLY FIELDS -->
+        <div id="registrationFields" class="hidden">
+
+          <label for="accountFirstName">First name</label>
+
+          <input
+            id="accountFirstName"
+            name="first_name"
+            type="text"
+            autocomplete="given-name"
+            maxlength="80"
+          >
+
+          <label for="accountLastName">Surname</label>
+
+          <input
+            id="accountLastName"
+            name="last_name"
+            type="text"
+            autocomplete="family-name"
+            maxlength="80"
+          >
+
+        </div>
+
         <label for="accountEmail">Email address</label>
 
         <input
@@ -276,6 +301,23 @@
           minlength="8"
           required
         >
+
+        <!-- REGISTRATION-ONLY PASSWORD CONFIRMATION -->
+        <div id="confirmPasswordField" class="hidden">
+
+          <label for="accountConfirmPassword">
+            Confirm password
+          </label>
+
+          <input
+            id="accountConfirmPassword"
+            name="confirm_password"
+            type="password"
+            autocomplete="new-password"
+            minlength="8"
+          >
+
+        </div>
 
         <button class="cta full" type="submit">Sign in</button>
       </form>
