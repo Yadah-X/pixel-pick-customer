@@ -853,6 +853,7 @@ function updateAccountInterface(session) {
   );
 
   setHidden('historySignInButton', signedIn);
+   setHidden('clearHistoryButton', !signedIn);
 
   if (!signedIn && submit) {
     submit.textContent =
@@ -1349,8 +1350,9 @@ async function signOutAccount(reason = 'manual') {
   }
 }
 
+
 /* =========================================================
-   ACCOUNT HISTORY
+   ACCOUNT HISTORY — LOAD AND CLEAR HISTORY
    ========================================================= */
 
 async function loadMyHistory() {
@@ -1448,6 +1450,155 @@ async function loadMyHistory() {
     );
   }
 }
+
+/* =========================================================
+   CLEAR HISTORY — CONFIRMATION POP-UP
+   ========================================================= */
+
+function openClearHistoryModal() {
+  const modal = element('clearHistoryModal');
+  const message = element('clearHistoryMessage');
+
+  if (!modal) return;
+
+  if (message) {
+    message.textContent = '';
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function closeClearHistoryModal() {
+  const modal = element('clearHistoryModal');
+
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+
+  const message = element('clearHistoryMessage');
+
+  if (message) {
+    message.textContent = '';
+  }
+}
+
+/* =========================================================
+   CONFIRM CLEAR HISTORY
+   ========================================================= */
+
+async function confirmClearHistory() {
+  const button = element('confirmClearHistoryButton');
+  const message = element('clearHistoryMessage');
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Clearing history…';
+  }
+
+  if (message) {
+    message.textContent =
+      'Please wait while your history is cleared…';
+  }
+
+  try {
+    const result = await callEdgeFunction(
+      ACCOUNT_HISTORY_URL,
+      { action: 'clear' }
+    );
+
+    if (!result.ok) {
+      throw new Error(
+        result.error ||
+        'Could not clear your history.'
+      );
+    }
+
+    closeClearHistoryModal();
+
+    await loadMyHistory();
+
+    setText(
+      'entryText',
+      'Your account history has been cleared from your account view. Your original entry and payment records remain securely retained.'
+    );
+
+  } catch (error) {
+    console.error(
+      'Could not clear account history:',
+      error
+    );
+
+    if (message) {
+      message.textContent =
+        error.message ||
+        'Could not clear your history. Please try again.';
+    }
+
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Yes, Clear History';
+    }
+  }
+}
+
+/* =========================================================
+   CLEAR HISTORY BUTTON EVENTS
+   ========================================================= */
+
+element('clearHistoryButton')
+  ?.addEventListener(
+    'click',
+    openClearHistoryModal
+  );
+
+element('cancelClearHistoryButton')
+  ?.addEventListener(
+    'click',
+    closeClearHistoryModal
+  );
+
+element('closeClearHistoryModal')
+  ?.addEventListener(
+    'click',
+    closeClearHistoryModal
+  );
+
+element('confirmClearHistoryButton')
+  ?.addEventListener(
+    'click',
+    confirmClearHistory
+  );
+
+/* Close the confirmation window when clicking outside it. */
+
+element('clearHistoryModal')
+  ?.addEventListener(
+    'click',
+    (event) => {
+      if (
+        event.target ===
+        element('clearHistoryModal')
+      ) {
+        closeClearHistoryModal();
+      }
+    }
+  );
+
+/* Close the confirmation window with Escape. */
+
+document.addEventListener(
+  'keydown',
+  (event) => {
+    if (
+      event.key === 'Escape' &&
+      !element('clearHistoryModal')?.classList.contains('hidden')
+    ) {
+      closeClearHistoryModal();
+    }
+  }
+);
+
 
 /* =========================================================
    SKILL CHALLENGE AND CHECKOUT
