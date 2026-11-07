@@ -34,6 +34,17 @@ let selectedCompetitionName = 'Competition';
 let activeChallengeId = null;
 let challengeBusy = false;
 let historyRequestNumber = 0;
+/* =========================================================
+   15-MINUTE AUTOMATIC INACTIVITY LOGOUT
+   ========================================================= */
+
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+const ACTIVITY_STORAGE_KEY = 'pixelPickLastActivity';
+
+let idleLogoutTimer = null;
+let lastActivityAt = 0;
+let lastActivitySavedAt = 0;
+let idleLogoutInProgress = false;
 
 function element(id) {
   return document.getElementById(id);
@@ -124,7 +135,139 @@ async function callEdgeFunction(url, body) {
 
   return result;
 }
+/* =========================================================
+   AUTOMATIC LOGOUT AFTER 15 MINUTES
+   ========================================================= */
 
+function getLastActivityTime() {
+  const stored = Number(
+    localStorage.getItem(ACTIVITY_STORAGE_KEY)
+  );
+
+  return Number.isFinite(stored) && stored > 0
+    ? stored
+    : Date.now();
+}
+
+function saveActivityTime(force = false) {
+  const now = Date.now();
+
+  lastActivityAt = now;
+
+  // Avoid writing to storage excessively.
+  if (
+    force ||
+    now - lastActivitySavedAt >= 5000
+  ) {
+    localStorage.setItem(
+      ACTIVITY_STORAGE_KEY,
+      String(now)
+    );
+
+    lastActivitySavedAt = now;
+  }
+
+  scheduleIdleLogout();
+}
+
+function stopIdleLogout() {
+  if (idleLogoutTimer) {
+    clearTimeout(idleLogoutTimer);
+    idleLogoutTimer = null;
+  }
+
+  idleLogoutInProgress = false;
+}
+
+function scheduleIdleLogout() {
+  if (idleLogoutInProgress) return;
+
+  if (idleLogoutTimer) {
+    clearTimeout(idleLogoutTimer);
+  }
+
+  const elapsed = Date.now() - lastActivityAt;
+  const remaining = IDLE_TIMEOUT_MS - elapsed;
+
+  idleLogoutTimer = setTimeout(() => {
+    checkIdleLogout();
+  }, Math.max(remaining, 0));
+}
+
+async function checkIdleLogout() {
+  if (idleLogoutInProgress) return;
+
+  const lastActivity = getLastActivityTime();
+
+  lastActivityAt = lastActivity;
+
+  const elapsed = Date.now() - lastActivity;
+
+  if (elapsed < IDLE_TIMEOUT_MS) {
+    scheduleIdleLogout();
+    return;
+  }
+
+  idleLogoutInProgress = true;
+
+  try {
+    await signOutAccount('inactivity');
+  } finally {
+    idleLogoutInProgress = false;
+  }
+}
+
+function startIdleLogout(event) {
+  if (event === 'SIGNED_IN') {
+    saveActivityTime(true);
+    return;
+  }
+
+  if (!localStorage.getItem(ACTIVITY_STORAGE_KEY)) {
+    saveActivityTime(true);
+    return;
+  }
+
+  lastActivityAt = getLastActivityTime();
+  scheduleIdleLogout();
+}
+
+function setupInactivityLogout() {
+  const activityEvents = [
+    'pointerdown',
+    'pointermove',
+    'keydown',
+    'scroll',
+    'touchstart',
+    'click'
+  ];
+
+  activityEvents.forEach((eventName) => {
+    document.addEventListener(
+      eventName,
+      () => {
+        if (idleLogoutInProgress) return;
+
+        saveActivityTime();
+      },
+      { passive: true }
+    );
+  });
+
+  // Activity in another open tab also resets the timer.
+  window.addEventListener('storage', (event) => {
+    if (event.key !== ACTIVITY_STORAGE_KEY) return;
+
+    if (!event.newValue) return;
+
+    const timestamp = Number(event.newValue);
+
+    if (Number.isFinite(timestamp)) {
+      lastActivityAt = timestamp;
+      scheduleIdleLogout();
+    }
+  });
+}
 /* =========================================================
    PAGE NAVIGATION
    ========================================================= */
@@ -683,7 +826,9 @@ element('accountForm')?.addEventListener(
   }
 );
 
-async function signOutAccount() {
+async function signOutAccount(reason = 'manual') {
+  stopIdleLogout();
+
   const { error } = await supabaseClient.auth.signOut();
 
   if (error) {
@@ -692,6 +837,8 @@ async function signOutAccount() {
     );
     return;
   }
+
+  localStorage.removeItem(ACTIVITY_STORAGE_KEY);
 
   accountMode = 'signin';
 
@@ -723,7 +870,11 @@ async function signOutAccount() {
 
   updateAccountInterface(null);
 
-  showAccountMessage('You have signed out.');
+  showAccountMessage(
+    reason === 'inactivity'
+      ? 'You have been signed out because your account was inactive for 15 minutes. Please sign in again.'
+      : 'You have signed out.'
+  );
 
   closeAccount();
   closeNavigationMenu();
@@ -736,7 +887,6 @@ async function signOutAccount() {
     );
   }
 }
-
 /* =========================================================
    ACCOUNT HISTORY
    ========================================================= */
@@ -1239,13 +1389,20 @@ element('supportForm')?.addEventListener(
 // Set up page navigation and the dropdown.
 setupPageNavigation();
 setupMenu();
+setupInactivityLogout();
 
 // Set up account features.
 setupForgotPassword();
 
 supabaseClient.auth.onAuthStateChange(
-  (_event, session) => {
+  (event, session) => {
     updateAccountInterface(session);
+
+    if (session?.user) {
+      startIdleLogout(event);
+    } else {
+      stopIdleLogout();
+    }
 
     if (session?.user) {
       loadMyHistory();
