@@ -933,3 +933,71 @@ footer {
   padding-right: 65px;
 }
 
+/* ========================================
+   PIXEL PICK — SKILL CHALLENGE MOBILE FIX
+   ======================================== */
+
+#modal {
+  padding: 12px;
+  align-items: center;
+}
+
+#modal .modal-box {
+  width: 100%;
+  max-width: 540px;
+  padding: 75px 22px 25px;
+  max-height: 90dvh;
+  overflow-y: auto;
+  position: relative;
+}
+
+#modal .close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 100;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: #c7ff35;
+  color: #111111;
+  border: 2px solid #111111;
+  border-radius: 50%;
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+  visibility: visible;
+  opacity: 1;
+}
+
+#modal .modal-box h2 {
+  padding-right: 0;
+  margin-top: 0;
+}
+
+@media (max-width: 520px) {
+  #modal {
+    padding: 10px;
+  }
+
+  #modal .modal-box {
+    padding: 72px 18px 22px;
+    max-height: 92dvh;
+  }
+
+  #modal .close {
+    top: 10px;
+    right: 10px;
+    width: 50px;
+    height: 50px;
+  }
+
+  #modal .board {
+    height: 190px;
+  }
+}
+
