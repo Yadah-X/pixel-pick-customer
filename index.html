@@ -242,29 +242,86 @@
       </div>
     </section>
 
-    <section id="referral" class="section dark page-hidden">
-      <p class="eyebrow">SHARE THE OPPORTUNITY</p>
-      <h2>Refer a Friend</h2>
+    
+<section id="referral" class="section dark page-hidden">
+  <p class="eyebrow">SHARE THE OPPORTUNITY</p>
+  <h2>Refer a Friend</h2>
+
+  <p>
+    Invite friends to join Pixel Pick using your personal referral link.
+  </p>
+
+  <div class="referral-content">
+    <h3>Your unique referral link</h3>
+
+    <p>
+      Share your link with friends. When someone registers through
+      your link and successfully purchases an eligible competition
+      entry, you can earn one free entry.
+    </p>
+
+    <label for="referralLink">Your personal referral link</label>
+
+    <input
+      id="referralLink"
+      type="text"
+      readonly
+      placeholder="Sign in to generate your referral link"
+      aria-label="Your unique referral link"
+    >
+
+    <div class="referral-actions">
+      <button
+        class="cta"
+        id="copyReferralLinkButton"
+        type="button"
+        disabled
+      >
+        Copy referral link
+      </button>
+
+      <button
+        class="outline"
+        id="shareReferralLinkButton"
+        type="button"
+        disabled
+      >
+        Share link
+      </button>
+    </div>
+
+    <p id="referralMessage" role="status" aria-live="polite">
+      Sign in to access your personal referral link.
+    </p>
+
+    <hr>
+
+    <h3>Your referral activity</h3>
+
+    <div class="referral-stats">
       <p>
-        Invite friends to join Pixel Pick and take part in our skill competitions.
+        <strong>Successful referrals:</strong>
+        <span id="successfulReferralCount">0</span>
       </p>
 
-      <div class="referral-content">
-        <h3>Earn a free entry</h3>
-        <p>
-          When someone you refer registers and successfully purchases a
-          competition entry, you can receive one free entry.
-        </p>
-        <p>
-          Referral rewards are valid for 24 hours and are subject to
-          verification and the applicable programme rules.
-        </p>
-        <p>
-          <strong>Coming soon:</strong> Our referral registration and
-          reward system is still being prepared.
-        </p>
-      </div>
-    </section>
+      <p>
+        <strong>Free entries earned:</strong>
+        <span id="referralRewardCount">0</span>
+      </p>
+    </div>
+
+    <p>
+      Each qualifying referral earns one free entry, valid for
+      24 hours after the reward is issued.
+    </p>
+
+    <p>
+      All referrals and rewards are subject to verification and
+      the applicable Pixel Pick referral programme rules.
+    </p>
+  </div>
+</section>
+
 
     <section id="support" class="section page-hidden">
       <div class="section-heading">
