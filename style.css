@@ -896,3 +896,40 @@ footer {
   padding-right: 55px;
 }
 
+/* ========================================
+   EXTRA VISIBLE MODAL CLOSE BUTTON
+   ======================================== */
+
+.modal .modal-box button.close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  min-width: 54px;
+  padding: 0;
+  background: #c7ff35;
+  color: #111111;
+  border: 2px solid #111111;
+  border-radius: 50%;
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1;
+  opacity: 1;
+  visibility: visible;
+  box-shadow: 0 3px 10px #0005;
+}
+
+.modal .modal-box button.close:hover {
+  background: #d9ff75;
+  transform: scale(1.05);
+}
+
+.modal .modal-box h2 {
+  padding-right: 65px;
+}
+
