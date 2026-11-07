@@ -1,11 +1,13 @@
 
 /* =========================================================
    PIXEL PICK — CUSTOMER WEBSITE
-   Accounts, password reset, page navigation, competitions,
+   Accounts, personal details, password management,
+   password reset, navigation, competitions,
    challenge verification, Sandbox checkout and support.
    ========================================================= */
 
 const SUPABASE_URL = 'https://cxhclxtbtrsyfigqleeg.supabase.co';
+
 const SUPABASE_PUBLISHABLE_KEY =
   'sb_publishable_N4pRAlpCzjTEoKR7TCYOEA_Irj7mCrv';
 
@@ -34,6 +36,7 @@ let selectedCompetitionName = 'Competition';
 let activeChallengeId = null;
 let challengeBusy = false;
 let historyRequestNumber = 0;
+
 /* =========================================================
    15-MINUTE AUTOMATIC INACTIVITY LOGOUT
    ========================================================= */
@@ -45,6 +48,10 @@ let idleLogoutTimer = null;
 let lastActivityAt = 0;
 let lastActivitySavedAt = 0;
 let idleLogoutInProgress = false;
+
+/* =========================================================
+   GENERAL HELPERS
+   ========================================================= */
 
 function element(id) {
   return document.getElementById(id);
@@ -79,7 +86,10 @@ function formatDate(value) {
   if (!value) return 'Date unavailable';
 
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Date unavailable';
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Date unavailable';
+  }
 
   return date.toLocaleString('en-ZA', {
     dateStyle: 'medium',
@@ -89,7 +99,10 @@ function formatDate(value) {
 
 function formatRand(cents) {
   const amount = Number(cents);
-  if (!Number.isFinite(amount)) return 'Price unavailable';
+
+  if (!Number.isFinite(amount)) {
+    return 'Price unavailable';
+  }
 
   return new Intl.NumberFormat('en-ZA', {
     style: 'currency',
@@ -98,13 +111,17 @@ function formatRand(cents) {
 }
 
 async function getAccessToken() {
-  const { data, error } = await supabaseClient.auth.getSession();
+  const { data, error } =
+    await supabaseClient.auth.getSession();
+
   if (error) throw error;
 
   const token = data.session?.access_token;
 
   if (!token) {
-    throw new Error('Please sign in before continuing.');
+    throw new Error(
+      'Please sign in before continuing.'
+    );
   }
 
   return token;
@@ -135,6 +152,7 @@ async function callEdgeFunction(url, body) {
 
   return result;
 }
+
 /* =========================================================
    AUTOMATIC LOGOUT AFTER 15 MINUTES
    ========================================================= */
@@ -154,7 +172,6 @@ function saveActivityTime(force = false) {
 
   lastActivityAt = now;
 
-  // Avoid writing to storage excessively.
   if (
     force ||
     now - lastActivitySavedAt >= 5000
@@ -254,10 +271,8 @@ function setupInactivityLogout() {
     );
   });
 
-  // Activity in another open tab also resets the timer.
   window.addEventListener('storage', (event) => {
     if (event.key !== ACTIVITY_STORAGE_KEY) return;
-
     if (!event.newValue) return;
 
     const timestamp = Number(event.newValue);
@@ -268,6 +283,7 @@ function setupInactivityLogout() {
     }
   });
 }
+
 /* =========================================================
    PAGE NAVIGATION
    ========================================================= */
@@ -279,15 +295,11 @@ function setupPageNavigation() {
 
   if (!homePage || !competitions || !main) return;
 
-  /*
-    Move competitions outside the Home container.
-
-    This allows Home to display both the welcome section
-    and competitions, while the Competitions menu displays
-    competitions on their own.
-  */
   if (competitions.parentElement !== main) {
-    homePage.insertAdjacentElement('afterend', competitions);
+    homePage.insertAdjacentElement(
+      'afterend',
+      competitions
+    );
   }
 
   const pages = [
@@ -308,7 +320,6 @@ function setupPageNavigation() {
       page = 'home';
     }
 
-    // Hide all separate sections first.
     homePage.classList.add('page-hidden');
     competitions.classList.add('page-hidden');
 
@@ -316,17 +327,17 @@ function setupPageNavigation() {
       element(id)?.classList.add('page-hidden');
     });
 
-    // Show the selected page.
     if (page === 'home') {
       homePage.classList.remove('page-hidden');
       competitions.classList.remove('page-hidden');
+
     } else if (page === 'competitions') {
       competitions.classList.remove('page-hidden');
+
     } else {
       element(page)?.classList.remove('page-hidden');
     }
 
-    // Update the browser address without reloading.
     if (updateAddress) {
       const newHash = `#${page}`;
 
@@ -339,41 +350,37 @@ function setupPageNavigation() {
       }
     }
 
-    // Move the customer to the top of the selected section.
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
     });
   }
 
-  // Make page navigation available to the menu and buttons.
   document.querySelectorAll('a[data-page]').forEach((link) => {
     link.addEventListener('click', (event) => {
       event.preventDefault();
 
-      const page = link.dataset.page;
-      showPage(page);
-
+      showPage(link.dataset.page);
       closeNavigationMenu();
     });
   });
 
-  // Home logo.
   document.querySelectorAll('a[href="#home"]').forEach((link) => {
     link.addEventListener('click', (event) => {
       event.preventDefault();
+
       showPage('home');
       closeNavigationMenu();
     });
   });
 
-  // Support browser back and forward navigation.
   window.addEventListener('popstate', () => {
-    const page = window.location.hash.replace('#', '') || 'home';
+    const page =
+      window.location.hash.replace('#', '') || 'home';
+
     showPage(page, false);
   });
 
-  // Open the correct page when the website first loads.
   const initialPage =
     window.location.hash.replace('#', '') || 'home';
 
@@ -391,8 +398,13 @@ function closeNavigationMenu() {
   if (!toggle || !panel) return;
 
   panel.classList.add('hidden');
+
   toggle.setAttribute('aria-expanded', 'false');
-  toggle.setAttribute('aria-label', 'Open navigation menu');
+
+  toggle.setAttribute(
+    'aria-label',
+    'Open navigation menu'
+  );
 }
 
 function setupMenu() {
@@ -408,11 +420,16 @@ function setupMenu() {
 
     panel.classList.toggle('hidden', !open);
 
-    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute(
+      'aria-expanded',
+      String(open)
+    );
 
     toggle.setAttribute(
       'aria-label',
-      open ? 'Close navigation menu' : 'Open navigation menu'
+      open
+        ? 'Close navigation menu'
+        : 'Open navigation menu'
     );
   });
 
@@ -442,7 +459,9 @@ async function loadCompetitions() {
 
   if (!grid) return;
 
-  grid.replaceChildren(makeParagraph('Loading competitions…'));
+  grid.replaceChildren(
+    makeParagraph('Loading competitions…')
+  );
 
   if (message) message.textContent = '';
 
@@ -465,6 +484,7 @@ async function loadCompetitions() {
           'There are no open competitions at the moment. Please check back soon.'
         )
       );
+
       return;
     }
 
@@ -488,6 +508,7 @@ async function loadCompetitions() {
       title.textContent = competition.name;
 
       const description = document.createElement('p');
+
       description.textContent =
         competition.prize_description ||
         'See the competition rules for details.';
@@ -496,16 +517,21 @@ async function loadCompetitions() {
       row.className = 'row';
 
       const price = document.createElement('b');
+
       price.textContent = formatRand(
         competition.entry_price_cents
       );
 
       const button = document.createElement('button');
+
       button.type = 'button';
       button.textContent = 'Start skill challenge';
 
       button.addEventListener('click', () => {
-        openChallenge(competition.id, competition.name);
+        openChallenge(
+          competition.id,
+          competition.name
+        );
       });
 
       row.append(price, button);
@@ -516,7 +542,10 @@ async function loadCompetitions() {
     });
 
   } catch (error) {
-    console.error('Could not load competitions:', error);
+    console.error(
+      'Could not load competitions:',
+      error
+    );
 
     grid.replaceChildren(
       makeParagraph(
@@ -563,10 +592,14 @@ function setupForgotPassword() {
   button.textContent = 'Forgot password?';
   button.className = 'forgot-password-button';
 
-  passwordInput.insertAdjacentElement('afterend', button);
+  passwordInput.insertAdjacentElement(
+    'afterend',
+    button
+  );
 
   button.addEventListener('click', async () => {
-    const email = element('accountEmail')?.value.trim();
+    const email =
+      element('accountEmail')?.value.trim();
 
     if (!email) {
       showAccountMessage(
@@ -578,7 +611,10 @@ function setupForgotPassword() {
     }
 
     button.disabled = true;
-    showAccountMessage('Sending password-reset email…');
+
+    showAccountMessage(
+      'Sending password-reset email…'
+    );
 
     try {
       const { error } =
@@ -596,7 +632,10 @@ function setupForgotPassword() {
       );
 
     } catch (error) {
-      console.error('Password reset request failed:', error);
+      console.error(
+        'Password reset request failed:',
+        error
+      );
 
       showAccountMessage(
         error.message ||
@@ -618,7 +657,10 @@ function updateRegistrationFields(signedIn = false) {
 
   const firstName = element('accountFirstName');
   const lastName = element('accountLastName');
-  const confirmPassword = element('accountConfirmPassword');
+  const confirmPassword =
+    element('accountConfirmPassword');
+
+  const phone = element('accountPhone');
 
   if (firstName) {
     firstName.required = registering;
@@ -633,6 +675,12 @@ function updateRegistrationFields(signedIn = false) {
   if (confirmPassword) {
     confirmPassword.required = registering;
     confirmPassword.disabled = signedIn;
+  }
+
+  // Phone number is optional. No SMS verification is used.
+  if (phone) {
+    phone.required = false;
+    phone.disabled = signedIn;
   }
 }
 
@@ -653,7 +701,9 @@ function toggleAccountMode() {
 
   if (submit) {
     submit.textContent =
-      accountMode === 'signup' ? 'Register' : 'Sign in';
+      accountMode === 'signup'
+        ? 'Register'
+        : 'Sign in';
   }
 
   setText(
@@ -682,6 +732,65 @@ function toggleAccountMode() {
   showAccountMessage('');
 }
 
+/* =========================================================
+   PERSONAL DETAILS DISPLAY
+   ========================================================= */
+
+function renderPersonalDetails(user) {
+  const panel = element('personalDetailsPanel');
+
+  if (!panel) return;
+
+  if (!user) {
+    panel.classList.add('hidden');
+    return;
+  }
+
+  panel.classList.remove('hidden');
+
+  const metadata = user.user_metadata || {};
+
+  if (element('profileFirstName')) {
+    element('profileFirstName').value =
+      metadata.first_name || '';
+  }
+
+  if (element('profileLastName')) {
+    element('profileLastName').value =
+      metadata.last_name || '';
+  }
+
+  if (element('profilePhone')) {
+    element('profilePhone').value =
+      metadata.phone_number || '';
+  }
+
+  if (element('profileEmail')) {
+    element('profileEmail').value =
+      user.email || '';
+  }
+
+  const verified = Boolean(
+    user.email_confirmed_at || user.confirmed_at
+  );
+
+  setText(
+    'emailVerificationStatus',
+    verified
+      ? 'Email address: Verified'
+      : 'Email address: Not yet verified'
+  );
+
+  setText(
+    'accountCreatedDate',
+    formatDate(user.created_at)
+  );
+}
+
+/* =========================================================
+   ACCOUNT INTERFACE
+   ========================================================= */
+
 function updateAccountInterface(session) {
   const signedIn = Boolean(session?.user);
   const email = session?.user?.email || '';
@@ -694,10 +803,16 @@ function updateAccountInterface(session) {
 
   setText(
     'accountSectionButton',
-    signedIn ? 'Account settings' : 'Sign in / Register'
+    signedIn
+      ? 'Account settings'
+      : 'Sign in / Register'
   );
 
-  setText('accountHeaderButton', 'Sign in / Register');
+  setText(
+    'accountHeaderButton',
+    'Sign in / Register'
+  );
+
   setText('headerSignOutButton', 'Sign out');
   setText('accountSectionSignOutButton', 'Sign out');
   setText('signOutButton', 'Sign out');
@@ -741,9 +856,235 @@ function updateAccountInterface(session) {
 
   if (!signedIn && submit) {
     submit.textContent =
-      accountMode === 'signup' ? 'Register' : 'Sign in';
+      accountMode === 'signup'
+        ? 'Register'
+        : 'Sign in';
   }
+
+  // Show personal details only for signed-in customers.
+  renderPersonalDetails(session?.user || null);
 }
+
+/* =========================================================
+   SAVE PERSONAL DETAILS
+   ========================================================= */
+
+element('personalDetailsForm')?.addEventListener(
+  'submit',
+  async (event) => {
+    event.preventDefault();
+
+    const button = element('savePersonalDetailsButton');
+    const message = element('personalDetailsMessage');
+
+    const firstName =
+      element('profileFirstName')?.value.trim();
+
+    const lastName =
+      element('profileLastName')?.value.trim();
+
+    const phone =
+      element('profilePhone')?.value.trim() || '';
+
+    const newEmail =
+      element('profileEmail')?.value.trim();
+
+    if (message) message.textContent = '';
+
+    if (!firstName || !lastName || !newEmail) {
+      if (message) {
+        message.textContent =
+          'Please enter your first name, surname and email address.';
+      }
+
+      return;
+    }
+
+    if (
+      firstName.length > 80 ||
+      lastName.length > 80
+    ) {
+      if (message) {
+        message.textContent =
+          'Your first name and surname must each be no longer than 80 characters.';
+      }
+
+      return;
+    }
+
+    if (phone.length > 30) {
+      if (message) {
+        message.textContent =
+          'Your phone number must be no longer than 30 characters.';
+      }
+
+      return;
+    }
+
+    if (button) button.disabled = true;
+
+    if (message) {
+      message.textContent = 'Saving your details…';
+    }
+
+    try {
+      const {
+        data: userData,
+        error: userError
+      } = await supabaseClient.auth.getUser();
+
+      if (userError) throw userError;
+
+      const user = userData.user;
+
+      if (!user) {
+        throw new Error('Please sign in again.');
+      }
+
+      // Save first name, surname and optional phone number.
+      const { error: detailsError } =
+        await supabaseClient.auth.updateUser({
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            phone_number: phone
+          }
+        });
+
+      if (detailsError) throw detailsError;
+
+      // Change email separately if the customer entered a new one.
+      if (
+        newEmail.toLowerCase() !==
+        (user.email || '').toLowerCase()
+      ) {
+        const { error: emailError } =
+          await supabaseClient.auth.updateUser({
+            email: newEmail
+          });
+
+        if (emailError) throw emailError;
+
+        if (message) {
+          message.textContent =
+            'Your personal details have been saved. Please check your email for confirmation instructions to complete your email address change.';
+        }
+
+      } else {
+        if (message) {
+          message.textContent =
+            'Your personal details have been saved successfully.';
+        }
+      }
+
+      await refreshAccount();
+
+    } catch (error) {
+      console.error(
+        'Could not update personal details:',
+        error
+      );
+
+      if (message) {
+        message.textContent =
+          error.message ||
+          'Could not save your details. Please try again.';
+      }
+
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+);
+
+/* =========================================================
+   CHANGE ACCOUNT PASSWORD
+   ========================================================= */
+
+element('changePasswordForm')?.addEventListener(
+  'submit',
+  async (event) => {
+    event.preventDefault();
+
+    const button = element('changePasswordButton');
+    const message = element('changePasswordMessage');
+
+    const password =
+      element('newAccountPassword')?.value || '';
+
+    const confirmation =
+      element('confirmNewAccountPassword')?.value || '';
+
+    if (message) message.textContent = '';
+
+    if (password.length < 8) {
+      if (message) {
+        message.textContent =
+          'Your new password must contain at least 8 characters.';
+      }
+
+      return;
+    }
+
+    if (password !== confirmation) {
+      if (message) {
+        message.textContent =
+          'Your new passwords do not match.';
+      }
+
+      return;
+    }
+
+    if (button) button.disabled = true;
+
+    if (message) {
+      message.textContent = 'Updating your password…';
+    }
+
+    try {
+      const { data } =
+        await supabaseClient.auth.getSession();
+
+      if (!data.session) {
+        throw new Error('Please sign in again.');
+      }
+
+      const { error } =
+        await supabaseClient.auth.updateUser({
+          password
+        });
+
+      if (error) throw error;
+
+      element('changePasswordForm')?.reset();
+
+      if (message) {
+        message.textContent =
+          'Your password has been updated successfully.';
+      }
+
+    } catch (error) {
+      console.error(
+        'Could not update password:',
+        error
+      );
+
+      if (message) {
+        message.textContent =
+          error.message ||
+          'Could not update your password. Please try again.';
+      }
+
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+);
+
+/* =========================================================
+   REFRESH ACCOUNT AND ACCOUNT HISTORY
+   ========================================================= */
+
 async function refreshAccount() {
   try {
     const { data, error } =
@@ -755,6 +1096,7 @@ async function refreshAccount() {
 
     if (data.session) {
       await loadMyHistory();
+
     } else {
       const history = element('entryHistory');
 
@@ -766,7 +1108,10 @@ async function refreshAccount() {
     }
 
   } catch (error) {
-    console.error('Could not refresh account:', error);
+    console.error(
+      'Could not refresh account:',
+      error
+    );
 
     setText(
       'accountStatus',
@@ -775,19 +1120,29 @@ async function refreshAccount() {
   }
 }
 
+/* =========================================================
+   REGISTRATION AND SIGN-IN
+   ========================================================= */
+
 element('accountForm')?.addEventListener(
   'submit',
   async (event) => {
     event.preventDefault();
 
-    const email = element('accountEmail')?.value.trim();
-    const password = element('accountPassword')?.value;
+    const email =
+      element('accountEmail')?.value.trim();
+
+    const password =
+      element('accountPassword')?.value;
 
     const firstName =
       element('accountFirstName')?.value.trim();
 
     const lastName =
       element('accountLastName')?.value.trim();
+
+    const phone =
+      element('accountPhone')?.value.trim() || '';
 
     const confirmPassword =
       element('accountConfirmPassword')?.value;
@@ -800,6 +1155,7 @@ element('accountForm')?.addEventListener(
       showAccountMessage(
         'Enter your email address and password.'
       );
+
       return;
     }
 
@@ -810,7 +1166,6 @@ element('accountForm')?.addEventListener(
     try {
       if (accountMode === 'signup') {
 
-        // Check the registration names.
         if (!firstName || !lastName) {
           throw new Error(
             'Please enter your first name and surname.'
@@ -826,14 +1181,18 @@ element('accountForm')?.addEventListener(
           );
         }
 
-        // Check password length.
+        if (phone.length > 30) {
+          throw new Error(
+            'Your phone number must be no longer than 30 characters.'
+          );
+        }
+
         if (password.length < 8) {
           throw new Error(
             'Your password must contain at least 8 characters.'
           );
         }
 
-        // Check password confirmation.
         if (!confirmPassword) {
           throw new Error(
             'Please confirm your password.'
@@ -846,7 +1205,6 @@ element('accountForm')?.addEventListener(
           );
         }
 
-        // Register the customer and save their names.
         const { data, error } =
           await supabaseClient.auth.signUp({
             email,
@@ -855,7 +1213,8 @@ element('accountForm')?.addEventListener(
               emailRedirectTo: SITE_URL,
               data: {
                 first_name: firstName,
-                last_name: lastName
+                last_name: lastName,
+                phone_number: phone
               }
             }
           });
@@ -870,7 +1229,6 @@ element('accountForm')?.addEventListener(
           await refreshAccount();
 
         } else {
-          // Email confirmation is required.
           if (element('accountPassword')) {
             element('accountPassword').value = '';
           }
@@ -886,7 +1244,6 @@ element('accountForm')?.addEventListener(
 
       } else {
 
-        // Existing email-and-password sign-in.
         const { error } =
           await supabaseClient.auth.signInWithPassword({
             email,
@@ -909,7 +1266,8 @@ element('accountForm')?.addEventListener(
       );
 
       showAccountMessage(
-        error.message || 'Could not complete the request.'
+        error.message ||
+        'Could not complete the request.'
       );
 
     } finally {
@@ -923,15 +1281,21 @@ element('accountForm')?.addEventListener(
   }
 );
 
+/* =========================================================
+   SIGN OUT
+   ========================================================= */
+
 async function signOutAccount(reason = 'manual') {
   stopIdleLogout();
 
-  const { error } = await supabaseClient.auth.signOut();
+  const { error } =
+    await supabaseClient.auth.signOut();
 
   if (error) {
     showAccountMessage(
       'Could not sign out. Please try again.'
     );
+
     return;
   }
 
@@ -984,6 +1348,7 @@ async function signOutAccount(reason = 'manual') {
     );
   }
 }
+
 /* =========================================================
    ACCOUNT HISTORY
    ========================================================= */
@@ -1024,6 +1389,7 @@ async function loadMyHistory() {
           'No challenge attempts or competition entries were found for your account.'
         )
       );
+
       return;
     }
 
@@ -1032,6 +1398,7 @@ async function loadMyHistory() {
       card.className = 'history-card';
 
       const title = document.createElement('h3');
+
       title.textContent =
         item.competition_name || 'Competition';
 
@@ -1123,19 +1490,25 @@ async function openChallenge(
     `Skill challenge: ${selectedCompetitionName}`
   );
 
-  setChallengeMessage('Preparing your challenge…');
+  setChallengeMessage(
+    'Preparing your challenge…'
+  );
 
   if (element('x')) element('x').value = '';
   if (element('y')) element('y').value = '';
 
   if (modal) modal.classList.remove('hidden');
 
-  const target = document.querySelector('#board .target');
+  const target = document.querySelector(
+    '#board .target'
+  );
 
   if (target) {
     target.style.left = '50%';
     target.style.top = '50%';
-    target.style.transform = 'translate(-50%, -50%)';
+
+    target.style.transform =
+      'translate(-50%, -50%)';
   }
 
   try {
@@ -1219,6 +1592,7 @@ async function submitEntry() {
     setChallengeMessage(
       'Please start a new challenge first.'
     );
+
     return;
   }
 
@@ -1233,13 +1607,16 @@ async function submitEntry() {
     setChallengeMessage(
       'Choose whole-number X and Y coordinates from 0 to 100.'
     );
+
     return;
   }
 
   try {
     setChallengeBusy(true);
 
-    setChallengeMessage('Checking your answer…');
+    setChallengeMessage(
+      'Checking your answer…'
+    );
 
     const verification = await callEdgeFunction(
       VERIFY_CHALLENGE_URL,
@@ -1272,6 +1649,7 @@ async function submitEntry() {
       }
     );
 
+    // Keep the Sandbox-only protection.
     if (
       !orderResult.ok ||
       !orderResult.checkout?.url ||
@@ -1324,35 +1702,38 @@ async function submitEntry() {
    BOARD COORDINATES
    ========================================================= */
 
-element('board')?.addEventListener('click', (event) => {
-  const board = event.currentTarget;
-  const rect = board.getBoundingClientRect();
+element('board')?.addEventListener(
+  'click',
+  (event) => {
+    const board = event.currentTarget;
+    const rect = board.getBoundingClientRect();
 
-  if (!rect.width || !rect.height) return;
+    if (!rect.width || !rect.height) return;
 
-  const x = Math.max(
-    0,
-    Math.min(
-      100,
-      Math.round(
-        ((event.clientX - rect.left) / rect.width) * 100
+    const x = Math.max(
+      0,
+      Math.min(
+        100,
+        Math.round(
+          ((event.clientX - rect.left) / rect.width) * 100
+        )
       )
-    )
-  );
+    );
 
-  const y = Math.max(
-    0,
-    Math.min(
-      100,
-      Math.round(
-        ((event.clientY - rect.top) / rect.height) * 100
+    const y = Math.max(
+      0,
+      Math.min(
+        100,
+        Math.round(
+          ((event.clientY - rect.top) / rect.height) * 100
+        )
       )
-    )
-  );
+    );
 
-  if (element('x')) element('x').value = x;
-  if (element('y')) element('y').value = y;
-});
+    if (element('x')) element('x').value = x;
+    if (element('y')) element('y').value = y;
+  }
+);
 
 /* =========================================================
    PAYMENT RETURN MESSAGE
@@ -1410,8 +1791,11 @@ element('supportForm')?.addEventListener(
     const button = element('supportSubmitButton');
     const status = element('supportMessageStatus');
 
-    const topic = element('supportTopic')?.value.trim();
-    const message = element('supportMessage')?.value.trim();
+    const topic =
+      element('supportTopic')?.value.trim();
+
+    const message =
+      element('supportMessage')?.value.trim();
 
     if (status) status.textContent = '';
 
@@ -1483,12 +1867,10 @@ element('supportForm')?.addEventListener(
    START THE WEBSITE
    ========================================================= */
 
-// Set up page navigation and the dropdown.
 setupPageNavigation();
 setupMenu();
 setupInactivityLogout();
 
-// Set up account features.
 setupForgotPassword();
 
 supabaseClient.auth.onAuthStateChange(
@@ -1516,11 +1898,13 @@ supabaseClient.auth.onAuthStateChange(
   }
 );
 
-// Load competitions and account information.
 loadCompetitions();
 refreshAccount();
 
-// Account buttons.
+/* =========================================================
+   ACCOUNT BUTTONS
+   ========================================================= */
+
 element('accountHeaderButton')
   ?.addEventListener('click', openAccount);
 
