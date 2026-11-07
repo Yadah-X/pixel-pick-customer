@@ -811,3 +811,52 @@ footer {
   cursor: not-allowed;
 }
 
+/* ========================================
+   CLEAR HISTORY CONFIRMATION BUTTONS
+   ======================================== */
+
+#cancelClearHistoryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 12px 18px;
+  background: #ffffff;
+  color: #111111;
+  border: 1px solid #cccccc;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  cursor: pointer;
+  opacity: 1;
+  visibility: visible;
+}
+
+#cancelClearHistoryButton:hover {
+  background: #f1f1f1;
+  border-color: #888888;
+}
+
+#confirmClearHistoryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 12px 18px;
+  background: #111111;
+  color: #ffffff;
+  border: 1px solid #111111;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  cursor: pointer;
+}
+
+#confirmClearHistoryButton:hover {
+  background: #333333;
+}
+
