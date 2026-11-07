@@ -2087,10 +2087,16 @@ refreshAccount();
    ========================================================= */
 
 element('accountHeaderButton')
-  ?.addEventListener('click', openAccount);
+  ?.addEventListener('click', () => {
+    closeNavigationMenu();
+    openAccount();
+  });
 
 element('accountSectionButton')
-  ?.addEventListener('click', openAccount);
+  ?.addEventListener('click', () => {
+    closeNavigationMenu();
+    openAccount();
+  });
 
 element('historySignInButton')
   ?.addEventListener('click', openAccount);
