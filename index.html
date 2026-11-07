@@ -11,36 +11,34 @@
 </head>
 <body>
   <header class="nav">
-    <a class="logo" href="#" aria-label="Pixel Pick home">
-      PIXEL<span>PICK</span>
-    </a>
+  <a class="logo" href="#" aria-label="Pixel Pick home">
+    PIXEL<span>PICK</span>
+  </a>
 
-    <button
-      class="menu-toggle outline"
-      id="menuToggle"
-      type="button"
-      aria-label="Open navigation menu"
-      aria-controls="menuPanel"
-      aria-expanded="false"
-    >
-      <span aria-hidden="true" class="hamburger">
-        <span></span>
-        <span></span>
-        <span></span>
-      </span>
-      <span class="menu-label">Menu</span>
-    </button>
+  <button
+    class="menu-toggle outline"
+    id="menuToggle"
+    type="button"
+    aria-label="Open navigation menu"
+    aria-controls="menuPanel"
+    aria-expanded="false"
+  >
+    <span aria-hidden="true" class="hamburger">
+      <span></span>
+      <span></span>
+      <span></span>
+    </span>
+    <span class="menu-label">Menu</span>
+  </button>
 
-    <nav id="menuPanel" class="menu-panel hidden" aria-label="Main navigation">
-      <a href="#competitions">Competitions</a>
-      <a href="#how">How it works</a>
-      <a href="#entries">My Challenges &amp; Entries</a>
-      <a href="#accountArea">My Account</a>
-    </nav>
+  <nav id="menuPanel" class="menu-panel hidden" aria-label="Main navigation">
+    <a href="#competitions">Competitions</a>
+    <a href="#entries">History</a>
+    <a href="#referral">Refer a Friend</a>
 
-    <div class="nav-account">
+    <div class="menu-account">
       <button
-        class="outline"
+        class="menu-sign-in"
         id="accountHeaderButton"
         type="button"
         onclick="openAccount()"
@@ -49,7 +47,7 @@
       </button>
 
       <button
-        class="outline hidden"
+        class="menu-sign-out hidden"
         id="headerSignOutButton"
         type="button"
         onclick="signOutAccount()"
@@ -57,7 +55,8 @@
         Sign out
       </button>
     </div>
-  </header>
+  </nav>
+</header>
 
   <main>
     <section class="hero">
