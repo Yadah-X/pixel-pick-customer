@@ -82,20 +82,74 @@
       </section>
     </div>
 
-    <section id="entries" class="section account page-hidden">
-      <p class="eyebrow">YOUR ACCOUNT</p>
-      <h2>My Challenges &amp; Entries</h2>
-      <p id="entryText" role="status" aria-live="polite">
-        Sign in to view your challenge and entry history.
-      </p>
-      <div id="entryHistory" class="entry-history" aria-live="polite">
-        <p>Your history will appear here after you sign in.</p>
-      </div>
-      <button class="cta" id="historySignInButton" type="button"
-        onclick="openAccount()">
-        Sign in to view history
+    
+<section id="entries" class="section account page-hidden">
+  <p class="eyebrow">YOUR ACCOUNT</p>
+  <h2>My Challenges &amp; Entries</h2>
+
+  <p id="entryText" role="status" aria-live="polite">
+    Sign in to view your challenge and entry history.
+  </p>
+
+  <div id="entryHistory" class="entry-history" aria-live="polite">
+    <p>Your history will appear here after you sign in.</p>
+  </div>
+
+  <button class="cta" id="historySignInButton" type="button"
+    onclick="openAccount()">
+    Sign in to view history
+  </button>
+
+  <button class="outline" id="clearHistoryButton" type="button">
+    Clear My History
+  </button>
+
+  <!-- CLEAR HISTORY CONFIRMATION POP-UP -->
+  <div id="clearHistoryModal" class="modal hidden">
+    <div class="modal-box" role="dialog" aria-modal="true"
+      aria-labelledby="clearHistoryTitle"
+      aria-describedby="clearHistoryWarning">
+
+      <button class="close" id="closeClearHistoryModal"
+        type="button" aria-label="Close confirmation window">
+        ×
       </button>
-    </section>
+
+      <p class="eyebrow">ACCOUNT HISTORY</p>
+
+      <h2 id="clearHistoryTitle">Clear My History?</h2>
+
+      <p>
+        Are you sure you want to clear your competition history
+        from your account?
+      </p>
+
+      <p id="clearHistoryWarning">
+        <strong>This action cannot be undone.</strong>
+      </p>
+
+      <p>
+        Your competition entries, payment records and transaction
+        details will not be deleted. Pixel Pick retains these records
+        securely for verification and record-keeping.
+      </p>
+
+      <div class="clear-history-actions">
+        <button class="outline" id="cancelClearHistoryButton"
+          type="button">
+          Cancel
+        </button>
+
+        <button class="cta" id="confirmClearHistoryButton"
+          type="button">
+          Yes, Clear History
+        </button>
+      </div>
+
+      <p id="clearHistoryMessage" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+</section>
 
     <!-- MY ACCOUNT AND PERSONAL DETAILS -->
     <section id="accountArea" class="section account page-hidden">
