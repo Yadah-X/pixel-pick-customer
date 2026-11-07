@@ -609,6 +609,33 @@ function setupForgotPassword() {
   });
 }
 
+function updateRegistrationFields(signedIn = false) {
+  const registering =
+    accountMode === 'signup' && !signedIn;
+
+  setHidden('registrationFields', !registering);
+  setHidden('confirmPasswordField', !registering);
+
+  const firstName = element('accountFirstName');
+  const lastName = element('accountLastName');
+  const confirmPassword = element('accountConfirmPassword');
+
+  if (firstName) {
+    firstName.required = registering;
+    firstName.disabled = signedIn;
+  }
+
+  if (lastName) {
+    lastName.required = registering;
+    lastName.disabled = signedIn;
+  }
+
+  if (confirmPassword) {
+    confirmPassword.required = registering;
+    confirmPassword.disabled = signedIn;
+  }
+}
+
 function toggleAccountMode() {
   accountMode =
     accountMode === 'signin' ? 'signup' : 'signin';
@@ -644,6 +671,8 @@ function toggleAccountMode() {
         ? 'new-password'
         : 'current-password';
   }
+
+  updateRegistrationFields(false);
 
   setHidden(
     'forgotPasswordButton',
@@ -692,6 +721,8 @@ function updateAccountInterface(session) {
   if (emailInput) emailInput.disabled = signedIn;
   if (passwordInput) passwordInput.disabled = signedIn;
 
+  updateRegistrationFields(signedIn);
+
   setText(
     'accountStatus',
     signedIn
@@ -713,7 +744,6 @@ function updateAccountInterface(session) {
       accountMode === 'signup' ? 'Register' : 'Sign in';
   }
 }
-
 async function refreshAccount() {
   try {
     const { data, error } =
