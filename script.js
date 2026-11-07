@@ -783,6 +783,15 @@ element('accountForm')?.addEventListener(
     const email = element('accountEmail')?.value.trim();
     const password = element('accountPassword')?.value;
 
+    const firstName =
+      element('accountFirstName')?.value.trim();
+
+    const lastName =
+      element('accountLastName')?.value.trim();
+
+    const confirmPassword =
+      element('accountConfirmPassword')?.value;
+
     const submit = document.querySelector(
       '#accountForm button[type="submit"]'
     );
@@ -800,12 +809,54 @@ element('accountForm')?.addEventListener(
 
     try {
       if (accountMode === 'signup') {
+
+        // Check the registration names.
+        if (!firstName || !lastName) {
+          throw new Error(
+            'Please enter your first name and surname.'
+          );
+        }
+
+        if (
+          firstName.length > 80 ||
+          lastName.length > 80
+        ) {
+          throw new Error(
+            'Your first name and surname must each be no longer than 80 characters.'
+          );
+        }
+
+        // Check password length.
+        if (password.length < 8) {
+          throw new Error(
+            'Your password must contain at least 8 characters.'
+          );
+        }
+
+        // Check password confirmation.
+        if (!confirmPassword) {
+          throw new Error(
+            'Please confirm your password.'
+          );
+        }
+
+        if (password !== confirmPassword) {
+          throw new Error(
+            'Your passwords do not match. Please check and try again.'
+          );
+        }
+
+        // Register the customer and save their names.
         const { data, error } =
           await supabaseClient.auth.signUp({
             email,
             password,
             options: {
-              emailRedirectTo: SITE_URL
+              emailRedirectTo: SITE_URL,
+              data: {
+                first_name: firstName,
+                last_name: lastName
+              }
             }
           });
 
@@ -813,18 +864,29 @@ element('accountForm')?.addEventListener(
 
         if (data.session) {
           showAccountMessage(
-            'Account created successfully.'
+            'Your account has been created successfully.'
           );
 
           await refreshAccount();
 
         } else {
+          // Email confirmation is required.
+          if (element('accountPassword')) {
+            element('accountPassword').value = '';
+          }
+
+          if (element('accountConfirmPassword')) {
+            element('accountConfirmPassword').value = '';
+          }
+
           showAccountMessage(
-            'Registration submitted. Check your email to confirm your account, then sign in.'
+            'Registration successful! Please check your email and click the confirmation link before signing in. Also check your spam folder.'
           );
         }
 
       } else {
+
+        // Existing email-and-password sign-in.
         const { error } =
           await supabaseClient.auth.signInWithPassword({
             email,
@@ -841,6 +903,11 @@ element('accountForm')?.addEventListener(
       }
 
     } catch (error) {
+      console.error(
+        'Account registration or sign-in failed:',
+        error
+      );
+
       showAccountMessage(
         error.message || 'Could not complete the request.'
       );
