@@ -1,8 +1,8 @@
 
 /* =========================================================
    PIXEL PICK — CUSTOMER WEBSITE
-   Accounts, password reset, navigation, competitions,
-   challenge verification and Sandbox checkout.
+   Accounts, password reset, page navigation, competitions,
+   challenge verification, Sandbox checkout and support.
    ========================================================= */
 
 const SUPABASE_URL = 'https://cxhclxtbtrsyfigqleeg.supabase.co';
@@ -91,6 +91,7 @@ async function getAccessToken() {
   if (error) throw error;
 
   const token = data.session?.access_token;
+
   if (!token) {
     throw new Error('Please sign in before continuing.');
   }
@@ -124,9 +125,132 @@ async function callEdgeFunction(url, body) {
   return result;
 }
 
-/* -------------------------
-   Navigation menu
-------------------------- */
+/* =========================================================
+   PAGE NAVIGATION
+   ========================================================= */
+
+function setupPageNavigation() {
+  const homePage = element('homePage');
+  const competitions = element('competitions');
+  const main = document.querySelector('main');
+
+  if (!homePage || !competitions || !main) return;
+
+  /*
+    Move competitions outside the Home container.
+
+    This allows Home to display both the welcome section
+    and competitions, while the Competitions menu displays
+    competitions on their own.
+  */
+  if (competitions.parentElement !== main) {
+    homePage.insertAdjacentElement('afterend', competitions);
+  }
+
+  const pages = [
+    'entries',
+    'referral',
+    'accountArea',
+    'support'
+  ];
+
+  function showPage(page, updateAddress = true) {
+    const validPages = [
+      'home',
+      'competitions',
+      ...pages
+    ];
+
+    if (!validPages.includes(page)) {
+      page = 'home';
+    }
+
+    // Hide all separate sections first.
+    homePage.classList.add('page-hidden');
+    competitions.classList.add('page-hidden');
+
+    pages.forEach((id) => {
+      element(id)?.classList.add('page-hidden');
+    });
+
+    // Show the selected page.
+    if (page === 'home') {
+      homePage.classList.remove('page-hidden');
+      competitions.classList.remove('page-hidden');
+    } else if (page === 'competitions') {
+      competitions.classList.remove('page-hidden');
+    } else {
+      element(page)?.classList.remove('page-hidden');
+    }
+
+    // Update the browser address without reloading.
+    if (updateAddress) {
+      const newHash = `#${page}`;
+
+      if (window.location.hash !== newHash) {
+        window.history.pushState(
+          { page },
+          '',
+          newHash
+        );
+      }
+    }
+
+    // Move the customer to the top of the selected section.
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+
+  // Make page navigation available to the menu and buttons.
+  document.querySelectorAll('a[data-page]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+
+      const page = link.dataset.page;
+      showPage(page);
+
+      closeNavigationMenu();
+    });
+  });
+
+  // Home logo.
+  document.querySelectorAll('a[href="#home"]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      showPage('home');
+      closeNavigationMenu();
+    });
+  });
+
+  // Support browser back and forward navigation.
+  window.addEventListener('popstate', () => {
+    const page = window.location.hash.replace('#', '') || 'home';
+    showPage(page, false);
+  });
+
+  // Open the correct page when the website first loads.
+  const initialPage =
+    window.location.hash.replace('#', '') || 'home';
+
+  showPage(initialPage, false);
+}
+
+/* =========================================================
+   NAVIGATION MENU
+   ========================================================= */
+
+function closeNavigationMenu() {
+  const toggle = element('menuToggle');
+  const panel = element('menuPanel');
+
+  if (!toggle || !panel) return;
+
+  panel.classList.add('hidden');
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('aria-label', 'Open navigation menu');
+}
 
 function setupMenu() {
   const toggle = element('menuToggle');
@@ -134,55 +258,57 @@ function setupMenu() {
 
   if (!toggle || !panel) return;
 
-  function closeMenu() {
-    panel.classList.add('hidden');
-    toggle.setAttribute('aria-expanded', 'false');
-    toggle.setAttribute('aria-label', 'Open navigation menu');
-  }
-
   toggle.addEventListener('click', (event) => {
     event.stopPropagation();
 
     const open = panel.classList.contains('hidden');
+
     panel.classList.toggle('hidden', !open);
+
     toggle.setAttribute('aria-expanded', String(open));
+
     toggle.setAttribute(
       'aria-label',
       open ? 'Close navigation menu' : 'Open navigation menu'
     );
   });
 
-  panel.querySelectorAll('a').forEach((link) => {
-    link.addEventListener('click', closeMenu);
-  });
-
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeMenu();
+    if (event.key === 'Escape') {
+      closeNavigationMenu();
+    }
   });
 
   document.addEventListener('click', (event) => {
-    if (!panel.contains(event.target) && !toggle.contains(event.target)) {
-      closeMenu();
+    if (
+      !panel.contains(event.target) &&
+      !toggle.contains(event.target)
+    ) {
+      closeNavigationMenu();
     }
   });
 }
 
-/* -------------------------
-   Competitions
-------------------------- */
+/* =========================================================
+   COMPETITIONS
+   ========================================================= */
 
 async function loadCompetitions() {
   const grid = element('competitionGrid');
   const message = element('competitionMessage');
+
   if (!grid) return;
 
   grid.replaceChildren(makeParagraph('Loading competitions…'));
+
   if (message) message.textContent = '';
 
   try {
     const { data, error } = await supabaseClient
       .from('competitions')
-      .select('id, name, prize_description, entry_price_cents, closes_at')
+      .select(
+        'id, name, prize_description, entry_price_cents, closes_at'
+      )
       .eq('status', 'open')
       .order('created_at', { ascending: false });
 
@@ -227,11 +353,14 @@ async function loadCompetitions() {
       row.className = 'row';
 
       const price = document.createElement('b');
-      price.textContent = formatRand(competition.entry_price_cents);
+      price.textContent = formatRand(
+        competition.entry_price_cents
+      );
 
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = 'Start skill challenge';
+
       button.addEventListener('click', () => {
         openChallenge(competition.id, competition.name);
       });
@@ -239,10 +368,13 @@ async function loadCompetitions() {
       row.append(price, button);
       pad.append(pill, title, description, row);
       card.append(visual, pad);
+
       grid.appendChild(card);
     });
+
   } catch (error) {
     console.error('Could not load competitions:', error);
+
     grid.replaceChildren(
       makeParagraph(
         'We could not load competitions. Please refresh the page and try again.'
@@ -251,26 +383,38 @@ async function loadCompetitions() {
   }
 }
 
-/* -------------------------
-   Account and password reset
-------------------------- */
+/* =========================================================
+   ACCOUNT AND PASSWORD RESET
+   ========================================================= */
 
 function openAccount() {
-  if (accountModal) accountModal.classList.remove('hidden');
+  if (accountModal) {
+    accountModal.classList.remove('hidden');
+  }
+
   refreshAccount();
 }
 
 function closeAccount() {
-  if (accountModal) accountModal.classList.add('hidden');
+  if (accountModal) {
+    accountModal.classList.add('hidden');
+  }
 }
 
 function setupForgotPassword() {
   const form = element('accountForm');
   const passwordInput = element('accountPassword');
 
-  if (!form || !passwordInput || element('forgotPasswordButton')) return;
+  if (
+    !form ||
+    !passwordInput ||
+    element('forgotPasswordButton')
+  ) {
+    return;
+  }
 
   const button = document.createElement('button');
+
   button.id = 'forgotPasswordButton';
   button.type = 'button';
   button.textContent = 'Forgot password?';
@@ -285,6 +429,7 @@ function setupForgotPassword() {
       showAccountMessage(
         'Enter your email address first, then select Forgot password?'
       );
+
       element('accountEmail')?.focus();
       return;
     }
@@ -293,23 +438,28 @@ function setupForgotPassword() {
     showAccountMessage('Sending password-reset email…');
 
     try {
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(
-        email,
-        {
-          redirectTo: `${SITE_URL}/?reset-password=true`
-        }
-      );
+      const { error } =
+        await supabaseClient.auth.resetPasswordForEmail(
+          email,
+          {
+            redirectTo: `${SITE_URL}/?reset-password=true`
+          }
+        );
 
       if (error) throw error;
 
       showAccountMessage(
         'If an account exists for that email, a password-reset email will be sent. Check your inbox and spam folder.'
       );
+
     } catch (error) {
       console.error('Password reset request failed:', error);
+
       showAccountMessage(
-        error.message || 'Could not request a password reset. Please try again.'
+        error.message ||
+        'Could not request a password reset. Please try again.'
       );
+
     } finally {
       button.disabled = false;
     }
@@ -317,11 +467,14 @@ function setupForgotPassword() {
 }
 
 function toggleAccountMode() {
-  accountMode = accountMode === 'signin' ? 'signup' : 'signin';
+  accountMode =
+    accountMode === 'signin' ? 'signup' : 'signin';
 
   setText(
     'accountTitle',
-    accountMode === 'signup' ? 'Create your account' : 'Sign in'
+    accountMode === 'signup'
+      ? 'Create your account'
+      : 'Sign in'
   );
 
   const submit = document.querySelector(
@@ -329,7 +482,8 @@ function toggleAccountMode() {
   );
 
   if (submit) {
-    submit.textContent = accountMode === 'signup' ? 'Register' : 'Sign in';
+    submit.textContent =
+      accountMode === 'signup' ? 'Register' : 'Sign in';
   }
 
   setText(
@@ -340,12 +494,19 @@ function toggleAccountMode() {
   );
 
   const password = element('accountPassword');
+
   if (password) {
     password.autocomplete =
-      accountMode === 'signup' ? 'new-password' : 'current-password';
+      accountMode === 'signup'
+        ? 'new-password'
+        : 'current-password';
   }
 
-  setHidden('forgotPasswordButton', accountMode !== 'signin');
+  setHidden(
+    'forgotPasswordButton',
+    accountMode !== 'signin'
+  );
+
   showAccountMessage('');
 }
 
@@ -353,12 +514,9 @@ function updateAccountInterface(session) {
   const signedIn = Boolean(session?.user);
   const email = session?.user?.email || '';
 
-  // Header: show Sign in when signed out, Sign out when signed in.
   setHidden('accountHeaderButton', signedIn);
   setHidden('headerSignOutButton', !signedIn);
 
-  // My Account: keep the button visible in BOTH states.
-  // This fixes the blank/missing account button.
   setHidden('accountSectionButton', false);
   setHidden('accountSectionSignOutButton', !signedIn);
 
@@ -367,23 +525,23 @@ function updateAccountInterface(session) {
     signedIn ? 'Account settings' : 'Sign in / Register'
   );
 
-  setText(
-    'accountHeaderButton',
-    'Sign in / Register'
-  );
-
+  setText('accountHeaderButton', 'Sign in / Register');
   setText('headerSignOutButton', 'Sign out');
   setText('accountSectionSignOutButton', 'Sign out');
   setText('signOutButton', 'Sign out');
 
-  // Modal account controls.
   setHidden('signOutButton', !signedIn);
   setHidden('accountModeButton', signedIn);
-  setHidden('forgotPasswordButton', signedIn || accountMode !== 'signin');
+
+  setHidden(
+    'forgotPasswordButton',
+    signedIn || accountMode !== 'signin'
+  );
 
   const submit = document.querySelector(
     '#accountForm button[type="submit"]'
   );
+
   const emailInput = element('accountEmail');
   const passwordInput = element('accountPassword');
 
@@ -415,7 +573,9 @@ function updateAccountInterface(session) {
 
 async function refreshAccount() {
   try {
-    const { data, error } = await supabaseClient.auth.getSession();
+    const { data, error } =
+      await supabaseClient.auth.getSession();
+
     if (error) throw error;
 
     updateAccountInterface(data.session);
@@ -424,129 +584,189 @@ async function refreshAccount() {
       await loadMyHistory();
     } else {
       const history = element('entryHistory');
+
       if (history) {
         history.replaceChildren(
           makeParagraph('Sign in to view your history.')
         );
       }
     }
+
   } catch (error) {
     console.error('Could not refresh account:', error);
-    setText('accountStatus', 'Could not check your account. Please refresh.');
+
+    setText(
+      'accountStatus',
+      'Could not check your account. Please refresh.'
+    );
   }
 }
 
-element('accountForm')?.addEventListener('submit', async (event) => {
-  event.preventDefault();
+element('accountForm')?.addEventListener(
+  'submit',
+  async (event) => {
+    event.preventDefault();
 
-  const email = element('accountEmail')?.value.trim();
-  const password = element('accountPassword')?.value;
-  const submit = document.querySelector(
-    '#accountForm button[type="submit"]'
-  );
+    const email = element('accountEmail')?.value.trim();
+    const password = element('accountPassword')?.value;
 
-  if (!email || !password) {
-    showAccountMessage('Enter your email address and password.');
-    return;
-  }
+    const submit = document.querySelector(
+      '#accountForm button[type="submit"]'
+    );
 
-  if (submit) submit.disabled = true;
-  showAccountMessage('Please wait…');
-
-  try {
-    if (accountMode === 'signup') {
-      const { data, error } = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: SITE_URL }
-      });
-
-      if (error) throw error;
-
-      if (data.session) {
-        showAccountMessage('Account created successfully.');
-        await refreshAccount();
-      } else {
-        showAccountMessage(
-          'Registration submitted. Check your email to confirm your account, then sign in.'
-        );
-      }
-    } else {
-      const { error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) throw error;
-
-      showAccountMessage('Signed in successfully.');
-      await refreshAccount();
+    if (!email || !password) {
+      showAccountMessage(
+        'Enter your email address and password.'
+      );
+      return;
     }
-  } catch (error) {
-    showAccountMessage(error.message || 'Could not complete the request.');
-  } finally {
-    const { data } = await supabaseClient.auth.getSession();
-    if (submit) submit.disabled = Boolean(data.session);
+
+    if (submit) submit.disabled = true;
+
+    showAccountMessage('Please wait…');
+
+    try {
+      if (accountMode === 'signup') {
+        const { data, error } =
+          await supabaseClient.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: SITE_URL
+            }
+          });
+
+        if (error) throw error;
+
+        if (data.session) {
+          showAccountMessage(
+            'Account created successfully.'
+          );
+
+          await refreshAccount();
+
+        } else {
+          showAccountMessage(
+            'Registration submitted. Check your email to confirm your account, then sign in.'
+          );
+        }
+
+      } else {
+        const { error } =
+          await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+          });
+
+        if (error) throw error;
+
+        showAccountMessage(
+          'Signed in successfully.'
+        );
+
+        await refreshAccount();
+      }
+
+    } catch (error) {
+      showAccountMessage(
+        error.message || 'Could not complete the request.'
+      );
+
+    } finally {
+      const { data } =
+        await supabaseClient.auth.getSession();
+
+      if (submit) {
+        submit.disabled = Boolean(data.session);
+      }
+    }
   }
-});
+);
 
 async function signOutAccount() {
   const { error } = await supabaseClient.auth.signOut();
 
   if (error) {
-    showAccountMessage('Could not sign out. Please try again.');
+    showAccountMessage(
+      'Could not sign out. Please try again.'
+    );
     return;
   }
 
   accountMode = 'signin';
+
   element('accountForm')?.reset();
 
   setText('accountTitle', 'Sign in');
-  setText('accountModeButton', 'Need an account? Register');
+
+  setText(
+    'accountModeButton',
+    'Need an account? Register'
+  );
 
   const submit = document.querySelector(
     '#accountForm button[type="submit"]'
   );
+
   if (submit) {
     submit.textContent = 'Sign in';
     submit.disabled = false;
   }
 
-  if (element('accountEmail')) element('accountEmail').disabled = false;
+  if (element('accountEmail')) {
+    element('accountEmail').disabled = false;
+  }
+
   if (element('accountPassword')) {
     element('accountPassword').disabled = false;
   }
 
   updateAccountInterface(null);
+
   showAccountMessage('You have signed out.');
+
   closeAccount();
+  closeNavigationMenu();
 
   const history = element('entryHistory');
+
   if (history) {
-    history.replaceChildren(makeParagraph('Sign in to view your history.'));
+    history.replaceChildren(
+      makeParagraph('Sign in to view your history.')
+    );
   }
 }
 
-/* -------------------------
-   Account history
-------------------------- */
+/* =========================================================
+   ACCOUNT HISTORY
+   ========================================================= */
 
 async function loadMyHistory() {
   const history = element('entryHistory');
+
   if (!history) return;
 
   const requestNumber = ++historyRequestNumber;
-  history.replaceChildren(makeParagraph('Loading your history…'));
+
+  history.replaceChildren(
+    makeParagraph('Loading your history…')
+  );
 
   try {
-    const result = await callEdgeFunction(ACCOUNT_HISTORY_URL, {
-      action: 'list'
-    });
+    const result = await callEdgeFunction(
+      ACCOUNT_HISTORY_URL,
+      { action: 'list' }
+    );
 
     if (requestNumber !== historyRequestNumber) return;
 
-    if (!result.ok || !Array.isArray(result.items)) {
-      throw new Error('The account history service is not ready yet.');
+    if (
+      !result.ok ||
+      !Array.isArray(result.items)
+    ) {
+      throw new Error(
+        'The account history service is not ready yet.'
+      );
     }
 
     history.replaceChildren();
@@ -565,34 +785,48 @@ async function loadMyHistory() {
       card.className = 'history-card';
 
       const title = document.createElement('h3');
-      title.textContent = item.competition_name || 'Competition';
+      title.textContent =
+        item.competition_name || 'Competition';
 
       const kind = document.createElement('p');
+
       kind.textContent =
         item.record_type === 'entry'
           ? 'Competition entry'
           : 'Skill challenge';
 
       const status = document.createElement('p');
-      status.textContent = `Status: ${item.status || 'Unavailable'}`;
+
+      status.textContent =
+        `Status: ${item.status || 'Unavailable'}`;
 
       const date = document.createElement('p');
-      date.textContent = `Date: ${formatDate(item.created_at)}`;
+
+      date.textContent =
+        `Date: ${formatDate(item.created_at)}`;
 
       card.append(title, kind, status, date);
 
       if (item.entry_number != null) {
         const number = document.createElement('p');
-        number.textContent = `Entry number: ${item.entry_number}`;
+
+        number.textContent =
+          `Entry number: ${item.entry_number}`;
+
         card.appendChild(number);
       }
 
       history.appendChild(card);
     });
+
   } catch (error) {
     if (requestNumber !== historyRequestNumber) return;
 
-    console.info('Account history is not available yet:', error.message);
+    console.info(
+      'Account history is not available yet:',
+      error.message
+    );
+
     history.replaceChildren(
       makeParagraph(
         'Your history is temporarily unavailable. Please try again later.'
@@ -601,32 +835,47 @@ async function loadMyHistory() {
   }
 }
 
-/* -------------------------
-   Skill challenge and checkout
-------------------------- */
+/* =========================================================
+   SKILL CHALLENGE AND CHECKOUT
+   ========================================================= */
 
 function setChallengeBusy(busy) {
   challengeBusy = busy;
+
   const button = element('submitChallengeButton');
+
   if (button) button.disabled = busy;
 }
 
-async function openChallenge(competitionId, competitionName = 'Competition') {
+async function openChallenge(
+  competitionId,
+  competitionName = 'Competition'
+) {
   selectedCompetitionId = competitionId;
-  selectedCompetitionName = competitionName || 'Competition';
+
+  selectedCompetitionName =
+    competitionName || 'Competition';
+
   activeChallengeId = null;
 
-  const { data, error } = await supabaseClient.auth.getSession();
+  const { data, error } =
+    await supabaseClient.auth.getSession();
 
   if (error || !data.session) {
     openAccount();
+
     showAccountMessage(
       'Please sign in or register before starting a skill challenge.'
     );
+
     return;
   }
 
-  setText('challengeTitle', `Skill challenge: ${selectedCompetitionName}`);
+  setText(
+    'challengeTitle',
+    `Skill challenge: ${selectedCompetitionName}`
+  );
+
   setChallengeMessage('Preparing your challenge…');
 
   if (element('x')) element('x').value = '';
@@ -635,6 +884,7 @@ async function openChallenge(competitionId, competitionName = 'Competition') {
   if (modal) modal.classList.remove('hidden');
 
   const target = document.querySelector('#board .target');
+
   if (target) {
     target.style.left = '50%';
     target.style.top = '50%';
@@ -644,36 +894,59 @@ async function openChallenge(competitionId, competitionName = 'Competition') {
   try {
     setChallengeBusy(true);
 
-    const result = await callEdgeFunction(VERIFY_CHALLENGE_URL, {
-      action: 'create',
-      competition_id: selectedCompetitionId
-    });
+    const result = await callEdgeFunction(
+      VERIFY_CHALLENGE_URL,
+      {
+        action: 'create',
+        competition_id: selectedCompetitionId
+      }
+    );
 
-    const challenge = result.challenge || result;
+    const challenge =
+      result.challenge || result;
 
     if (
       !challenge.id ||
       !Number.isInteger(challenge.target_x) ||
       !Number.isInteger(challenge.target_y)
     ) {
-      throw new Error('The challenge service returned an invalid challenge.');
+      throw new Error(
+        'The challenge service returned an invalid challenge.'
+      );
     }
 
     activeChallengeId = challenge.id;
 
     if (target) {
-      target.style.left = `${challenge.target_x}%`;
-      target.style.top = `${challenge.target_y}%`;
-      target.style.transform = 'translate(-50%, -50%)';
+      target.style.left =
+        `${challenge.target_x}%`;
+
+      target.style.top =
+        `${challenge.target_y}%`;
+
+      target.style.transform =
+        'translate(-50%, -50%)';
     }
 
     setChallengeMessage(
       'Prototype challenge: the target is currently visible. Do not use this as a production skill test or enable real payments.'
     );
+
   } catch (error) {
-    console.error('Could not create challenge:', error);
-    setText('challengeTitle', 'Could not start challenge');
-    setChallengeMessage(error.message || 'Please try again.');
+    console.error(
+      'Could not create challenge:',
+      error
+    );
+
+    setText(
+      'challengeTitle',
+      'Could not start challenge'
+    );
+
+    setChallengeMessage(
+      error.message || 'Please try again.'
+    );
+
   } finally {
     setChallengeBusy(false);
   }
@@ -681,6 +954,7 @@ async function openChallenge(competitionId, competitionName = 'Competition') {
 
 function closeChallenge() {
   if (modal) modal.classList.add('hidden');
+
   activeChallengeId = null;
   challengeBusy = false;
 }
@@ -690,11 +964,14 @@ async function submitEntry() {
 
   const xInput = element('x');
   const yInput = element('y');
+
   const x = Number(xInput?.value);
   const y = Number(yInput?.value);
 
   if (!activeChallengeId || !selectedCompetitionId) {
-    setChallengeMessage('Please start a new challenge first.');
+    setChallengeMessage(
+      'Please start a new challenge first.'
+    );
     return;
   }
 
@@ -714,28 +991,39 @@ async function submitEntry() {
 
   try {
     setChallengeBusy(true);
+
     setChallengeMessage('Checking your answer…');
 
-    const verification = await callEdgeFunction(VERIFY_CHALLENGE_URL, {
-      action: 'verify',
-      challenge_id: activeChallengeId,
-      x,
-      y
-    });
+    const verification = await callEdgeFunction(
+      VERIFY_CHALLENGE_URL,
+      {
+        action: 'verify',
+        challenge_id: activeChallengeId,
+        x,
+        y
+      }
+    );
 
     if (!verification.solved) {
       setChallengeMessage(
-        verification.message || 'That answer was not accepted. Please try again.'
+        verification.message ||
+        'That answer was not accepted. Please try again.'
       );
+
       return;
     }
 
-    setChallengeMessage('Challenge solved. Preparing Sandbox checkout…');
+    setChallengeMessage(
+      'Challenge solved. Preparing Sandbox checkout…'
+    );
 
-    const orderResult = await callEdgeFunction(CREATE_PAYMENT_ORDER_URL, {
-      competition_id: selectedCompetitionId,
-      challenge_id: activeChallengeId
-    });
+    const orderResult = await callEdgeFunction(
+      CREATE_PAYMENT_ORDER_URL,
+      {
+        competition_id: selectedCompetitionId,
+        challenge_id: activeChallengeId
+      }
+    );
 
     if (
       !orderResult.ok ||
@@ -749,34 +1037,45 @@ async function submitEntry() {
     }
 
     const form = document.createElement('form');
+
     form.method = 'POST';
     form.action = orderResult.checkout.url;
     form.acceptCharset = 'UTF-8';
     form.style.display = 'none';
 
-    Object.entries(orderResult.checkout.fields).forEach(([name, value]) => {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = name;
-      input.value = String(value);
-      form.appendChild(input);
-    });
+    Object.entries(orderResult.checkout.fields).forEach(
+      ([name, value]) => {
+        const input = document.createElement('input');
+
+        input.type = 'hidden';
+        input.name = name;
+        input.value = String(value);
+
+        form.appendChild(input);
+      }
+    );
 
     document.body.appendChild(form);
     form.submit();
+
   } catch (error) {
-    console.error('Challenge or checkout failed:', error);
+    console.error(
+      'Challenge or checkout failed:',
+      error
+    );
+
     setChallengeMessage(
       `${error.message || 'Something went wrong.'} Payment is not confirmed unless the server verifies it.`
     );
+
   } finally {
     setChallengeBusy(false);
   }
 }
 
-/* -------------------------
-   Board coordinates
-------------------------- */
+/* =========================================================
+   BOARD COORDINATES
+   ========================================================= */
 
 element('board')?.addEventListener('click', (event) => {
   const board = event.currentTarget;
@@ -786,24 +1085,37 @@ element('board')?.addEventListener('click', (event) => {
 
   const x = Math.max(
     0,
-    Math.min(100, Math.round(((event.clientX - rect.left) / rect.width) * 100))
+    Math.min(
+      100,
+      Math.round(
+        ((event.clientX - rect.left) / rect.width) * 100
+      )
+    )
   );
 
   const y = Math.max(
     0,
-    Math.min(100, Math.round(((event.clientY - rect.top) / rect.height) * 100))
+    Math.min(
+      100,
+      Math.round(
+        ((event.clientY - rect.top) / rect.height) * 100
+      )
+    )
   );
 
   if (element('x')) element('x').value = x;
   if (element('y')) element('y').value = y;
 });
 
-/* -------------------------
-   Payment return message
-------------------------- */
+/* =========================================================
+   PAYMENT RETURN MESSAGE
+   ========================================================= */
 
 (function handlePaymentReturn() {
-  const params = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(
+    window.location.search
+  );
+
   const payment = params.get('payment');
 
   if (payment === 'returned') {
@@ -811,6 +1123,7 @@ element('board')?.addEventListener('click', (event) => {
       'competitionMessage',
       'You returned from PayFast. This page alone cannot confirm payment.'
     );
+
   } else if (payment === 'cancelled') {
     setText(
       'competitionMessage',
@@ -823,114 +1136,154 @@ element('board')?.addEventListener('click', (event) => {
     params.delete('order_id');
 
     const query = params.toString();
+
     const cleanUrl =
       window.location.pathname +
       (query ? `?${query}` : '') +
       window.location.hash;
 
-    window.history.replaceState({}, document.title, cleanUrl);
+    window.history.replaceState(
+      {},
+      document.title,
+      cleanUrl
+    );
   }
 })();
 
-/* -------------------------
-   Start the page
-------------------------- */
+/* =========================================================
+   CUSTOMER SUPPORT
+   ========================================================= */
 
-setupMenu();
-setupForgotPassword();
+element('supportForm')?.addEventListener(
+  'submit',
+  async (event) => {
+    event.preventDefault();
 
-supabaseClient.auth.onAuthStateChange((_event, session) => {
-  updateAccountInterface(session);
+    const form = event.currentTarget;
+    const button = element('supportSubmitButton');
+    const status = element('supportMessageStatus');
 
-  if (session?.user) {
-    loadMyHistory();
-  } else {
-    const history = element('entryHistory');
-    if (history) {
-      history.replaceChildren(makeParagraph('Sign in to view your history.'));
+    const topic = element('supportTopic')?.value.trim();
+    const message = element('supportMessage')?.value.trim();
+
+    if (status) status.textContent = '';
+
+    try {
+      if (button) button.disabled = true;
+
+      const {
+        data,
+        error: authError
+      } = await supabaseClient.auth.getUser();
+
+      if (authError) throw authError;
+
+      const user = data.user;
+
+      if (!user || !user.email) {
+        throw new Error(
+          'Please sign in before submitting a support enquiry.'
+        );
+      }
+
+      if (
+        !topic ||
+        !message ||
+        message.length < 10
+      ) {
+        throw new Error(
+          'Please select a topic and enter a message of at least 10 characters.'
+        );
+      }
+
+      const { error } = await supabaseClient
+        .from('support_requests')
+        .insert({
+          user_id: user.id,
+          email: user.email,
+          topic,
+          message
+        });
+
+      if (error) throw error;
+
+      if (status) {
+        status.textContent =
+          'Thank you! Your support enquiry has been received.';
+      }
+
+      form.reset();
+
+    } catch (error) {
+      console.error(
+        'Support enquiry failed:',
+        error
+      );
+
+      if (status) {
+        status.textContent =
+          error.message ||
+          'Could not submit your enquiry. Please try again.';
+      }
+
+    } finally {
+      if (button) button.disabled = false;
     }
   }
-});
+);
 
+/* =========================================================
+   START THE WEBSITE
+   ========================================================= */
+
+// Set up page navigation and the dropdown.
+setupPageNavigation();
+setupMenu();
+
+// Set up account features.
+setupForgotPassword();
+
+supabaseClient.auth.onAuthStateChange(
+  (_event, session) => {
+    updateAccountInterface(session);
+
+    if (session?.user) {
+      loadMyHistory();
+
+    } else {
+      const history = element('entryHistory');
+
+      if (history) {
+        history.replaceChildren(
+          makeParagraph('Sign in to view your history.')
+        );
+      }
+    }
+  }
+);
+
+// Load competitions and account information.
 loadCompetitions();
 refreshAccount();
 
-// Wire up existing account buttons if the HTML does not already do so.
-element('accountHeaderButton')?.addEventListener('click', openAccount);
-element('accountSectionButton')?.addEventListener('click', openAccount);
-element('historySignInButton')?.addEventListener('click', openAccount);
+// Account buttons.
+element('accountHeaderButton')
+  ?.addEventListener('click', openAccount);
 
+element('accountSectionButton')
+  ?.addEventListener('click', openAccount);
 
-element('headerSignOutButton')?.addEventListener('click', signOutAccount);
-element('accountSectionSignOutButton')?.addEventListener('click', signOutAccount);
-element('signOutButton')?.addEventListener('click', signOutAccount);
+element('historySignInButton')
+  ?.addEventListener('click', openAccount);
 
-// Keep the account modal easy to close when its close control exists.
-element('closeAccountButton')?.addEventListener('click', closeAccount);
-/* -------------------------
-   Customer Support
-------------------------- */
+element('headerSignOutButton')
+  ?.addEventListener('click', signOutAccount);
 
-element('supportForm')?.addEventListener('submit', async (event) => {
-  event.preventDefault();
+element('accountSectionSignOutButton')
+  ?.addEventListener('click', signOutAccount);
 
-  const form = event.currentTarget;
-  const button = element('supportSubmitButton');
-  const status = element('supportMessageStatus');
+element('signOutButton')
+  ?.addEventListener('click', signOutAccount);
 
-  const topic = element('supportTopic')?.value.trim();
-  const message = element('supportMessage')?.value.trim();
-
-  if (status) status.textContent = '';
-
-  try {
-    if (button) button.disabled = true;
-
-    const { data, error: authError } =
-      await supabaseClient.auth.getUser();
-
-    if (authError) throw authError;
-
-    const user = data.user;
-
-    if (!user || !user.email) {
-      throw new Error(
-        'Please sign in before submitting a support enquiry.'
-      );
-    }
-
-    if (!topic || !message || message.length < 10) {
-      throw new Error(
-        'Please select a topic and enter a message of at least 10 characters.'
-      );
-    }
-
-    const { error } = await supabaseClient
-      .from('support_requests')
-      .insert({
-        user_id: user.id,
-        email: user.email,
-        topic,
-        message
-      });
-
-    if (error) throw error;
-
-    if (status) {
-      status.textContent =
-        'Thank you! Your support enquiry has been received.';
-    }
-
-    form.reset();
-
-  } catch (error) {
-    console.error('Support enquiry failed:', error);
-
-    if (status) {
-      status.textContent =
-        error.message || 'Could not submit your enquiry. Please try again.';
-    }
-  } finally {
-    if (button) button.disabled = false;
-  }
-});
+element('closeAccountButton')
+  ?.addEventListener('click', closeAccount);
