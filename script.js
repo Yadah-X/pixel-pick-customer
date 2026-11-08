@@ -3,7 +3,8 @@
    PIXEL PICK — CUSTOMER WEBSITE
    Accounts, personal details, password management,
    password reset, navigation, competitions,
-   challenge verification, Sandbox checkout and support.
+   challenge verification, Sandbox checkout, support
+   and referral links.
    ========================================================= */
 
 const SUPABASE_URL = 'https://cxhclxtbtrsyfigqleeg.supabase.co';
@@ -22,6 +23,9 @@ const CREATE_PAYMENT_ORDER_URL =
 const ACCOUNT_HISTORY_URL =
   `${SUPABASE_URL}/functions/v1/my-account-history`;
 
+const PENDING_REFERRAL_STORAGE_KEY =
+  'pixelPickPendingReferralCode';
+
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY
@@ -36,6 +40,44 @@ let selectedCompetitionName = 'Competition';
 let activeChallengeId = null;
 let challengeBusy = false;
 let historyRequestNumber = 0;
+let referralRequestNumber = 0;
+
+/* =========================================================
+   CAPTURE REFERRAL CODE BEFORE OTHER URL PROCESSING
+   ========================================================= */
+
+function captureReferralCodeFromUrl() {
+  try {
+    const params = new URLSearchParams(
+      window.location.search
+    );
+
+    const referralCode = params.get('ref');
+
+    if (!referralCode) return;
+
+    const cleanCode = referralCode.trim().toUpperCase();
+
+    if (!/^PP-[A-Z0-9]{12}$/.test(cleanCode)) {
+      console.warn('Invalid referral code in URL.');
+      return;
+    }
+
+    sessionStorage.setItem(
+      PENDING_REFERRAL_STORAGE_KEY,
+      cleanCode
+    );
+
+  } catch (error) {
+    console.error(
+      'Unable to capture referral code:',
+      error
+    );
+  }
+}
+
+// This runs immediately, before payment-return URL handling.
+captureReferralCodeFromUrl();
 
 /* =========================================================
    15-MINUTE AUTOMATIC INACTIVITY LOGOUT
@@ -264,7 +306,6 @@ function setupInactivityLogout() {
       eventName,
       () => {
         if (idleLogoutInProgress) return;
-
         saveActivityTime();
       },
       { passive: true }
@@ -578,20 +619,16 @@ function closeAccount() {
    ========================================================= */
 
 function finishSuccessfulAuthentication() {
-  // Close the sign-in or registration window.
   closeAccount();
-
-  // Close the navigation menu if it is open.
   closeNavigationMenu();
 
-  // Navigate to Home using the existing navigation handler.
   const homeLink = document.querySelector('a[href="#home"]');
 
   if (homeLink) {
     homeLink.click();
   } else {
-    // Fallback in case the Home link is unavailable.
     window.location.hash = 'home';
+
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
@@ -703,7 +740,6 @@ function updateRegistrationFields(signedIn = false) {
     confirmPassword.disabled = signedIn;
   }
 
-  // Phone number is optional. No SMS verification is used.
   if (phone) {
     phone.required = false;
     phone.disabled = signedIn;
@@ -814,6 +850,245 @@ function renderPersonalDetails(user) {
 }
 
 /* =========================================================
+   REFERRAL LINK AND REFERRAL DASHBOARD
+   ========================================================= */
+
+function setReferralMessage(message) {
+  setText('referralMessage', message);
+}
+
+function clearReferralDashboard(message = 'Sign in to access your personal referral link.') {
+  const linkInput = element('referralLink');
+
+  if (linkInput) {
+    linkInput.value = '';
+    linkInput.placeholder =
+      'Sign in to generate your referral link';
+  }
+
+  const copyButton = element('copyReferralLinkButton');
+  const shareButton = element('shareReferralLinkButton');
+
+  if (copyButton) copyButton.disabled = true;
+  if (shareButton) shareButton.disabled = true;
+
+  setText('successfulReferralCount', '0');
+  setText('referralRewardCount', '0');
+
+  setReferralMessage(message);
+}
+
+async function loadMyReferralDashboard(user) {
+  const requestNumber = ++referralRequestNumber;
+
+  if (!user) {
+    clearReferralDashboard();
+    return;
+  }
+
+  setReferralMessage('Loading your referral details…');
+
+  const linkInput = element('referralLink');
+
+  if (linkInput) {
+    linkInput.placeholder = 'Generating your referral link…';
+  }
+
+  try {
+    // Ask the database to create or return this customer's
+    // unique referral code.
+    const { data: referralCode, error: codeError } =
+      await supabaseClient.rpc('get_my_referral_code');
+
+    if (codeError) throw codeError;
+
+    if (
+      typeof referralCode !== 'string' ||
+      !/^PP-[A-Z0-9]{12}$/.test(referralCode)
+    ) {
+      throw new Error(
+        'The referral code returned by the server is invalid.'
+      );
+    }
+
+    const referralUrl = new URL(SITE_URL);
+
+    referralUrl.searchParams.set(
+      'ref',
+      referralCode
+    );
+
+    if (linkInput) {
+      linkInput.value = referralUrl.toString();
+      linkInput.placeholder = '';
+    }
+
+    const copyButton = element('copyReferralLinkButton');
+    const shareButton = element('shareReferralLinkButton');
+
+    if (copyButton) copyButton.disabled = false;
+    if (shareButton) shareButton.disabled = false;
+
+    // Only count referrals where this customer is the referrer.
+    const {
+      data: referrals,
+      error: referralsError
+    } = await supabaseClient
+      .from('referrals')
+      .select('id, status')
+      .eq('referrer_user_id', user.id);
+
+    if (referralsError) throw referralsError;
+
+    // Fetch only rewards belonging to this customer.
+    const {
+      data: rewards,
+      error: rewardsError
+    } = await supabaseClient
+      .from('referral_rewards')
+      .select('id, status, expires_at')
+      .eq('user_id', user.id);
+
+    if (rewardsError) throw rewardsError;
+
+    // Ignore results from an older request if the account changed.
+    if (requestNumber !== referralRequestNumber) return;
+
+    const successfulCount = (referrals || []).filter(
+      (referral) => referral.status === 'qualified'
+    ).length;
+
+    const rewardCount = (rewards || []).length;
+
+    setText(
+      'successfulReferralCount',
+      String(successfulCount)
+    );
+
+    setText(
+      'referralRewardCount',
+      String(rewardCount)
+    );
+
+    setReferralMessage(
+      'Your personal referral link is ready to share.'
+    );
+
+  } catch (error) {
+    if (requestNumber !== referralRequestNumber) return;
+
+    console.error(
+      'Could not load referral dashboard:',
+      error
+    );
+
+    setReferralMessage(
+      error.message ||
+      'We could not load your referral details. Please try again.'
+    );
+  }
+}
+
+async function copyReferralLink() {
+  const link = element('referralLink')?.value.trim();
+
+  if (!link) {
+    setReferralMessage(
+      'Your referral link is not ready yet. Please try again.'
+    );
+    return;
+  }
+
+  const button = element('copyReferralLinkButton');
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(link);
+
+    } else {
+      const input = element('referralLink');
+
+      input.focus();
+      input.select();
+
+      const copied = document.execCommand('copy');
+
+      if (!copied) {
+        throw new Error('Copy was not successful.');
+      }
+    }
+
+    setReferralMessage(
+      'Your referral link has been copied. You can now share it with friends.'
+    );
+
+  } catch (error) {
+    console.error(
+      'Could not copy referral link:',
+      error
+    );
+
+    setReferralMessage(
+      'We could not copy the link automatically. Please select and copy the link from the box.'
+    );
+
+    element('referralLink')?.focus();
+    element('referralLink')?.select();
+
+  } finally {
+    if (button) button.blur();
+  }
+}
+
+async function shareReferralLink() {
+  const link = element('referralLink')?.value.trim();
+
+  if (!link) {
+    setReferralMessage(
+      'Your referral link is not ready yet. Please try again.'
+    );
+    return;
+  }
+
+  const shareData = {
+    title: 'Join Pixel Pick',
+    text: 'Join me on Pixel Pick and take part in skill competitions.',
+    url: link
+  };
+
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+
+      setReferralMessage(
+        'Your referral link is ready to share.'
+      );
+
+    } else {
+      await copyReferralLink();
+    }
+
+  } catch (error) {
+    if (error.name === 'AbortError') return;
+
+    console.error(
+      'Could not share referral link:',
+      error
+    );
+
+    setReferralMessage(
+      'Sharing is unavailable on this device. Please use the Copy referral link button instead.'
+    );
+  }
+}
+
+element('copyReferralLinkButton')
+  ?.addEventListener('click', copyReferralLink);
+
+element('shareReferralLinkButton')
+  ?.addEventListener('click', shareReferralLink);
+
+/* =========================================================
    ACCOUNT INTERFACE
    ========================================================= */
 
@@ -888,7 +1163,6 @@ function updateAccountInterface(session) {
         : 'Sign in';
   }
 
-  // Show personal details only for signed-in customers.
   renderPersonalDetails(session?.user || null);
 }
 
@@ -968,7 +1242,6 @@ element('personalDetailsForm')?.addEventListener(
         throw new Error('Please sign in again.');
       }
 
-      // Save first name, surname and optional phone number.
       const { error: detailsError } =
         await supabaseClient.auth.updateUser({
           data: {
@@ -980,7 +1253,6 @@ element('personalDetailsForm')?.addEventListener(
 
       if (detailsError) throw detailsError;
 
-      // Change email separately if the customer entered a new one.
       if (
         newEmail.toLowerCase() !==
         (user.email || '').toLowerCase()
@@ -1122,7 +1394,10 @@ async function refreshAccount() {
     updateAccountInterface(data.session);
 
     if (data.session) {
-      await loadMyHistory();
+      await Promise.all([
+        loadMyHistory(),
+        loadMyReferralDashboard(data.session.user)
+      ]);
 
     } else {
       const history = element('entryHistory');
@@ -1132,6 +1407,8 @@ async function refreshAccount() {
           makeParagraph('Sign in to view your history.')
         );
       }
+
+      clearReferralDashboard();
     }
 
   } catch (error) {
@@ -1232,21 +1509,45 @@ element('accountForm')?.addEventListener(
           );
         }
 
+        // Read the referral code captured when this browser
+        // opened a personal referral link.
+        const pendingReferralCode =
+          sessionStorage.getItem(
+            PENDING_REFERRAL_STORAGE_KEY
+          );
+
+        const signupMetadata = {
+          first_name: firstName,
+          last_name: lastName,
+          phone_number: phone
+        };
+
+        if (
+          pendingReferralCode &&
+          /^PP-[A-Z0-9]{12}$/.test(pendingReferralCode)
+        ) {
+          signupMetadata.referral_code =
+            pendingReferralCode;
+        }
+
         const { data, error } =
           await supabaseClient.auth.signUp({
             email,
             password,
             options: {
               emailRedirectTo: SITE_URL,
-              data: {
-                first_name: firstName,
-                last_name: lastName,
-                phone_number: phone
-              }
+              data: signupMetadata
             }
           });
 
         if (error) throw error;
+
+        // The database registration trigger has already
+        // processed the metadata when the user is created.
+        // Remove the temporary code only after signup succeeds.
+        sessionStorage.removeItem(
+          PENDING_REFERRAL_STORAGE_KEY
+        );
 
         if (data.session) {
           showAccountMessage(
@@ -1255,7 +1556,6 @@ element('accountForm')?.addEventListener(
 
           await refreshAccount();
 
-          // Automatically close the account window and go Home.
           finishSuccessfulAuthentication();
 
         } else {
@@ -1288,7 +1588,6 @@ element('accountForm')?.addEventListener(
 
         await refreshAccount();
 
-        // Automatically close the account window and go Home.
         finishSuccessfulAuthentication();
       }
 
@@ -1363,6 +1662,8 @@ async function signOutAccount(reason = 'manual') {
   }
 
   updateAccountInterface(null);
+
+  clearReferralDashboard();
 
   showAccountMessage(
     reason === 'inactivity'
@@ -1513,10 +1814,6 @@ function closeClearHistoryModal() {
   }
 }
 
-/* =========================================================
-   CONFIRM CLEAR HISTORY
-   ========================================================= */
-
 async function confirmClearHistory() {
   const button = element('confirmClearHistoryButton');
   const message = element('clearHistoryMessage');
@@ -1573,62 +1870,33 @@ async function confirmClearHistory() {
   }
 }
 
-/* =========================================================
-   CLEAR HISTORY BUTTON EVENTS
-   ========================================================= */
-
 element('clearHistoryButton')
-  ?.addEventListener(
-    'click',
-    openClearHistoryModal
-  );
+  ?.addEventListener('click', openClearHistoryModal);
 
 element('cancelClearHistoryButton')
-  ?.addEventListener(
-    'click',
-    closeClearHistoryModal
-  );
+  ?.addEventListener('click', closeClearHistoryModal);
 
 element('closeClearHistoryModal')
-  ?.addEventListener(
-    'click',
-    closeClearHistoryModal
-  );
+  ?.addEventListener('click', closeClearHistoryModal);
 
 element('confirmClearHistoryButton')
-  ?.addEventListener(
-    'click',
-    confirmClearHistory
-  );
-
-/* Close the confirmation window when clicking outside it. */
+  ?.addEventListener('click', confirmClearHistory);
 
 element('clearHistoryModal')
-  ?.addEventListener(
-    'click',
-    (event) => {
-      if (
-        event.target ===
-        element('clearHistoryModal')
-      ) {
-        closeClearHistoryModal();
-      }
-    }
-  );
-
-/* Close the confirmation window with Escape. */
-
-document.addEventListener(
-  'keydown',
-  (event) => {
-    if (
-      event.key === 'Escape' &&
-      !element('clearHistoryModal')?.classList.contains('hidden')
-    ) {
+  ?.addEventListener('click', (event) => {
+    if (event.target === element('clearHistoryModal')) {
       closeClearHistoryModal();
     }
+  });
+
+document.addEventListener('keydown', (event) => {
+  if (
+    event.key === 'Escape' &&
+    !element('clearHistoryModal')?.classList.contains('hidden')
+  ) {
+    closeClearHistoryModal();
   }
-);
+});
 
 /* =========================================================
    SKILL CHALLENGE AND CHECKOUT
@@ -1830,7 +2098,6 @@ async function submitEntry() {
       }
     );
 
-    // Keep the Sandbox-only protection.
     if (
       !orderResult.ok ||
       !orderResult.checkout?.url ||
@@ -1883,38 +2150,35 @@ async function submitEntry() {
    BOARD COORDINATES
    ========================================================= */
 
-element('board')?.addEventListener(
-  'click',
-  (event) => {
-    const board = event.currentTarget;
-    const rect = board.getBoundingClientRect();
+element('board')?.addEventListener('click', (event) => {
+  const board = event.currentTarget;
+  const rect = board.getBoundingClientRect();
 
-    if (!rect.width || !rect.height) return;
+  if (!rect.width || !rect.height) return;
 
-    const x = Math.max(
-      0,
-      Math.min(
-        100,
-        Math.round(
-          ((event.clientX - rect.left) / rect.width) * 100
-        )
+  const x = Math.max(
+    0,
+    Math.min(
+      100,
+      Math.round(
+        ((event.clientX - rect.left) / rect.width) * 100
       )
-    );
+    )
+  );
 
-    const y = Math.max(
-      0,
-      Math.min(
-        100,
-        Math.round(
-          ((event.clientY - rect.top) / rect.height) * 100
-        )
+  const y = Math.max(
+    0,
+    Math.min(
+      100,
+      Math.round(
+        ((event.clientY - rect.top) / rect.height) * 100
       )
-    );
+    )
+  );
 
-    if (element('x')) element('x').value = x;
-    if (element('y')) element('y').value = y;
-  }
-);
+  if (element('x')) element('x').value = x;
+  if (element('y')) element('y').value = y;
+});
 
 /* =========================================================
    PAYMENT RETURN MESSAGE
@@ -1944,6 +2208,7 @@ element('board')?.addEventListener(
     params.delete('payment');
     params.delete('order_id');
 
+    // Keep the referral parameter if one is present.
     const query = params.toString();
 
     const cleanUrl =
@@ -2051,7 +2316,6 @@ element('supportForm')?.addEventListener(
 setupPageNavigation();
 setupMenu();
 setupInactivityLogout();
-
 setupForgotPassword();
 
 supabaseClient.auth.onAuthStateChange(
@@ -2066,6 +2330,7 @@ supabaseClient.auth.onAuthStateChange(
 
     if (session?.user) {
       loadMyHistory();
+      loadMyReferralDashboard(session.user);
 
     } else {
       const history = element('entryHistory');
@@ -2075,6 +2340,8 @@ supabaseClient.auth.onAuthStateChange(
           makeParagraph('Sign in to view your history.')
         );
       }
+
+      clearReferralDashboard();
     }
   }
 );
