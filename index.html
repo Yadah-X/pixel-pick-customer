@@ -243,12 +243,15 @@
     </section>
 
     
+
 <section id="referral" class="section dark page-hidden">
   <p class="eyebrow">SHARE THE OPPORTUNITY</p>
   <h2>Refer a Friend</h2>
 
   <p>
     Invite friends to join Pixel Pick using your personal referral link.
+    When someone registers through your link and successfully purchases
+    an eligible competition entry, you can earn one free entry.
   </p>
 
   <div class="referral-content">
@@ -261,7 +264,6 @@
     </p>
 
     <label for="referralLink">Your personal referral link</label>
-
     <input
       id="referralLink"
       type="text"
@@ -271,21 +273,13 @@
     >
 
     <div class="referral-actions">
-      <button
-        class="cta"
-        id="copyReferralLinkButton"
-        type="button"
-        disabled
-      >
+      <button class="cta" id="copyReferralLinkButton"
+        type="button" disabled>
         Copy referral link
       </button>
 
-      <button
-        class="outline"
-        id="shareReferralLinkButton"
-        type="button"
-        disabled
-      >
+      <button class="outline" id="shareReferralLinkButton"
+        type="button" disabled>
         Share link
       </button>
     </div>
@@ -308,12 +302,78 @@
         <strong>Free entries earned:</strong>
         <span id="referralRewardCount">0</span>
       </p>
+
+      <p>
+        <strong>Available free entries:</strong>
+        <span id="availableReferralRewardCount">0</span>
+      </p>
     </div>
 
+    <hr>
+
+    <h3>Your free entries &amp; rewards</h3>
+
     <p>
-      Each qualifying referral earns one free entry, valid for
-      24 hours after the reward is issued.
+      Each qualifying referral earns one free entry. Rewards are
+      valid for 24 hours after they are issued.
     </p>
+
+    <div id="referralRewardsList" aria-live="polite">
+      <p>Sign in to view your free entries and rewards.</p>
+    </div>
+
+    <hr>
+
+    <h3>Claim your free entry</h3>
+
+    <p>
+      Select an available reward and an open competition.
+      You will need to complete the skill challenge before your
+      free entry can be confirmed.
+    </p>
+
+    <label for="referralRewardSelect">
+      Select your free reward
+    </label>
+
+    <select id="referralRewardSelect" disabled>
+      <option value="">No available rewards</option>
+    </select>
+
+    <label for="referralCompetitionSelect">
+      Choose a competition
+    </label>
+
+    <select id="referralCompetitionSelect" disabled>
+      <option value="">Loading available competitions...</option>
+    </select>
+
+    <button
+      class="cta full"
+      id="claimReferralRewardButton"
+      type="button"
+      disabled
+    >
+      Claim your free entry
+    </button>
+
+    <p id="referralClaimMessage" role="status" aria-live="polite">
+      Sign in to claim a free entry.
+    </p>
+
+    <p id="referralClaimConfirmation" role="status"
+      aria-live="polite"></p>
+
+    <p>
+      <strong>Amount charged: R0.00</strong>
+    </p>
+
+    <p>
+      Claiming a free referral entry does not require a payment
+      or PayFast checkout. Each reward can only be redeemed once.
+    </p>
+
+    <hr>
 
     <p>
       All referrals and rewards are subject to verification and
@@ -321,6 +381,7 @@
     </p>
   </div>
 </section>
+
 
 
     <section id="support" class="section page-hidden">
