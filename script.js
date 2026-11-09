@@ -1,9 +1,8 @@
-
 /* =========================================================
    PIXEL PICK — CUSTOMER WEBSITE
-   Accounts, personal details, password management,
-   navigation, competitions, ten-task visual game,
-   Sandbox PayFast checkout, support and referral links.
+   Accounts, personal details, navigation, competitions,
+   ten-task visual game, Sandbox PayFast checkout,
+   account history, referrals and customer support.
    ========================================================= */
 
 const SUPABASE_URL = 'https://cxhclxtbtrsyfigqleeg.supabase.co';
@@ -28,9 +27,7 @@ const START_COMPETITION_ATTEMPT_URL =
 const SUBMIT_COMPETITION_ANSWER_URL =
   `${SUPABASE_URL}/functions/v1/submit-competition-answer`;
 
-const PENDING_REFERRAL_STORAGE_KEY =
-  'pixelPickPendingReferralCode';
-
+const PENDING_REFERRAL_STORAGE_KEY = 'pixelPickPendingReferralCode';
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 const ACTIVITY_STORAGE_KEY = 'pixelPickLastActivity';
 const CHECKOUT_STORAGE_KEY = 'pixelPickCheckoutInProgress';
@@ -46,10 +43,6 @@ const modal = document.getElementById('modal');
 const accountModal = document.getElementById('accountModal');
 
 let accountMode = 'signin';
-let selectedCompetitionId = null;
-let selectedCompetitionName = 'Competition';
-let activeChallengeId = null;
-let challengeBusy = false;
 
 let historyRequestNumber = 0;
 let referralRequestNumber = 0;
@@ -70,35 +63,10 @@ let lastActivityAt = 0;
 let lastActivitySavedAt = 0;
 let idleLogoutInProgress = false;
 
-/* =========================================================
-   CAPTURE REFERRAL CODE
-   ========================================================= */
-
-function captureReferralCodeFromUrl() {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const referralCode = params.get('ref');
-
-    if (!referralCode) return;
-
-    const cleanCode = referralCode.trim().toUpperCase();
-
-    if (!/^PP-[A-Z0-9]{12}$/.test(cleanCode)) {
-      console.warn('Invalid referral code in URL.');
-      return;
-    }
-
-    sessionStorage.setItem(
-      PENDING_REFERRAL_STORAGE_KEY,
-      cleanCode
-    );
-
-  } catch (error) {
-    console.error('Unable to capture referral code:', error);
-  }
-}
-
-captureReferralCodeFromUrl();
+let selectedCompetitionId = null;
+let selectedCompetitionName = 'Competition';
+let activeChallengeId = null;
+let challengeBusy = false;
 
 /* =========================================================
    GENERAL HELPERS
@@ -122,15 +90,6 @@ function makeParagraph(message) {
   const p = document.createElement('p');
   p.textContent = message;
   return p;
-}
-
-function showAccountMessage(message) {
-  setText('accountMessage', message);
-}
-
-function setChallengeMessage(message) {
-  setText('challengeMessage', message);
-  setText('competitionMessage', message);
 }
 
 function formatDate(value) {
@@ -159,6 +118,15 @@ function formatRand(cents) {
     style: 'currency',
     currency: 'ZAR'
   }).format(amount / 100);
+}
+
+function showAccountMessage(message) {
+  setText('accountMessage', message);
+}
+
+function setChallengeMessage(message) {
+  setText('challengeMessage', message);
+  setText('competitionMessage', message);
 }
 
 async function getAccessToken() {
@@ -201,6 +169,36 @@ async function callEdgeFunction(url, body) {
 
   return result;
 }
+
+/* =========================================================
+   CAPTURE REFERRAL CODE
+   ========================================================= */
+
+function captureReferralCodeFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const referralCode = params.get('ref');
+
+    if (!referralCode) return;
+
+    const cleanCode = referralCode.trim().toUpperCase();
+
+    if (!/^PP-[A-Z0-9]{12}$/.test(cleanCode)) {
+      console.warn('Invalid referral code in URL.');
+      return;
+    }
+
+    sessionStorage.setItem(
+      PENDING_REFERRAL_STORAGE_KEY,
+      cleanCode
+    );
+
+  } catch (error) {
+    console.error('Unable to capture referral code:', error);
+  }
+}
+
+captureReferralCodeFromUrl();
 
 /* =========================================================
    AUTOMATIC LOGOUT AFTER 15 MINUTES
@@ -247,7 +245,10 @@ function stopIdleLogout() {
 }
 
 function scheduleIdleLogout() {
-  if (idleLogoutInProgress || isPayFastCheckoutInProgress()) {
+  if (
+    idleLogoutInProgress ||
+    isPayFastCheckoutInProgress()
+  ) {
     return;
   }
 
@@ -265,14 +266,16 @@ function scheduleIdleLogout() {
 }
 
 async function checkIdleLogout() {
-  if (idleLogoutInProgress || isPayFastCheckoutInProgress()) {
+  if (
+    idleLogoutInProgress ||
+    isPayFastCheckoutInProgress()
+  ) {
     return;
   }
 
-  const lastActivity = getLastActivityTime();
-  lastActivityAt = lastActivity;
+  lastActivityAt = getLastActivityTime();
 
-  if (Date.now() - lastActivity < IDLE_TIMEOUT_MS) {
+  if (Date.now() - lastActivityAt < IDLE_TIMEOUT_MS) {
     scheduleIdleLogout();
     return;
   }
@@ -322,7 +325,10 @@ function setupInactivityLogout() {
   });
 
   window.addEventListener('storage', (event) => {
-    if (event.key !== ACTIVITY_STORAGE_KEY || !event.newValue) {
+    if (
+      event.key !== ACTIVITY_STORAGE_KEY ||
+      !event.newValue
+    ) {
       return;
     }
 
@@ -358,9 +364,15 @@ function setupPageNavigation() {
   ];
 
   function showPage(page, updateAddress = true) {
-    const validPages = ['home', 'competitions', ...pages];
+    const validPages = [
+      'home',
+      'competitions',
+      ...pages
+    ];
 
-    if (!validPages.includes(page)) page = 'home';
+    if (!validPages.includes(page)) {
+      page = 'home';
+    }
 
     homePage.classList.add('page-hidden');
     competitions.classList.add('page-hidden');
@@ -386,7 +398,10 @@ function setupPageNavigation() {
       }
     }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   }
 
   document.querySelectorAll('a[data-page]').forEach((link) => {
@@ -453,7 +468,9 @@ function setupMenu() {
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeNavigationMenu();
+    if (event.key === 'Escape') {
+      closeNavigationMenu();
+    }
   });
 
   document.addEventListener('click', (event) => {
@@ -476,7 +493,9 @@ async function loadCompetitions() {
 
   if (!grid) return;
 
-  grid.replaceChildren(makeParagraph('Loading competitions…'));
+  grid.replaceChildren(
+    makeParagraph('Loading competitions…')
+  );
 
   if (message) message.textContent = '';
 
@@ -499,6 +518,8 @@ async function loadCompetitions() {
           'There are no open competitions at the moment. Please check back soon.'
         )
       );
+
+      populateReferralCompetitionSelect([]);
       return;
     }
 
@@ -538,7 +559,6 @@ async function loadCompetitions() {
       button.type = 'button';
       button.textContent = 'Start skill challenge';
 
-      // NEW FLOW: start the ten-task game BEFORE payment.
       button.addEventListener('click', () => {
         startCompetitionGame(
           String(competition.id),
@@ -553,6 +573,8 @@ async function loadCompetitions() {
       grid.appendChild(card);
     });
 
+    populateReferralCompetitionSelect(data);
+
   } catch (error) {
     console.error('Could not load competitions:', error);
 
@@ -565,7 +587,7 @@ async function loadCompetitions() {
 }
 
 /* =========================================================
-   ACCOUNT AND PASSWORD RESET
+   ACCOUNT MODAL AND PASSWORD RESET
    ========================================================= */
 
 function openAccount() {
@@ -587,16 +609,18 @@ function finishSuccessfulAuthentication() {
     homeLink.click();
   } else {
     window.location.hash = 'home';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   }
 }
 
 function setupForgotPassword() {
-  const form = element('accountForm');
   const passwordInput = element('accountPassword');
 
   if (
-    !form ||
+    !element('accountForm') ||
     !passwordInput ||
     element('forgotPasswordButton')
   ) {
@@ -619,6 +643,7 @@ function setupForgotPassword() {
       showAccountMessage(
         'Enter your email address first, then select Forgot password?'
       );
+
       element('accountEmail')?.focus();
       return;
     }
@@ -630,7 +655,9 @@ function setupForgotPassword() {
       const { error } =
         await supabaseClient.auth.resetPasswordForEmail(
           email,
-          { redirectTo: `${SITE_URL}/?reset-password=true` }
+          {
+            redirectTo: `${SITE_URL}/?reset-password=true`
+          }
         );
 
       if (error) throw error;
@@ -641,6 +668,7 @@ function setupForgotPassword() {
 
     } catch (error) {
       console.error('Password reset request failed:', error);
+
       showAccountMessage(
         error.message ||
         'Could not request a password reset. Please try again.'
@@ -653,7 +681,8 @@ function setupForgotPassword() {
 }
 
 function updateRegistrationFields(signedIn = false) {
-  const registering = accountMode === 'signup' && !signedIn;
+  const registering =
+    accountMode === 'signup' && !signedIn;
 
   setHidden('registrationFields', !registering);
   setHidden('confirmPasswordField', !registering);
@@ -685,7 +714,8 @@ function updateRegistrationFields(signedIn = false) {
 }
 
 function toggleAccountMode() {
-  accountMode = accountMode === 'signin' ? 'signup' : 'signin';
+  accountMode =
+    accountMode === 'signin' ? 'signup' : 'signin';
 
   setText(
     'accountTitle',
@@ -720,7 +750,11 @@ function toggleAccountMode() {
   }
 
   updateRegistrationFields(false);
-  setHidden('forgotPasswordButton', accountMode !== 'signin');
+  setHidden(
+    'forgotPasswordButton',
+    accountMode !== 'signin'
+  );
+
   showAccountMessage('');
 }
 
@@ -772,11 +806,206 @@ function renderPersonalDetails(user) {
       : 'Email address: Not yet verified'
   );
 
-  setText('accountCreatedDate', formatDate(user.created_at));
+  setText(
+    'accountCreatedDate',
+    formatDate(user.created_at)
+  );
 }
 
+element('personalDetailsForm')?.addEventListener(
+  'submit',
+  async (event) => {
+    event.preventDefault();
+
+    const button = element('savePersonalDetailsButton');
+    const message = element('personalDetailsMessage');
+
+    const firstName =
+      element('profileFirstName')?.value.trim();
+
+    const lastName =
+      element('profileLastName')?.value.trim();
+
+    const phone =
+      element('profilePhone')?.value.trim() || '';
+
+    const newEmail =
+      element('profileEmail')?.value.trim();
+
+    if (message) message.textContent = '';
+
+    if (!firstName || !lastName || !newEmail) {
+      if (message) {
+        message.textContent =
+          'Please enter your first name, surname and email address.';
+      }
+      return;
+    }
+
+    if (firstName.length > 80 || lastName.length > 80) {
+      if (message) {
+        message.textContent =
+          'Your first name and surname must each be no longer than 80 characters.';
+      }
+      return;
+    }
+
+    if (phone.length > 30) {
+      if (message) {
+        message.textContent =
+          'Your phone number must be no longer than 30 characters.';
+      }
+      return;
+    }
+
+    if (button) button.disabled = true;
+
+    if (message) {
+      message.textContent = 'Saving your details…';
+    }
+
+    try {
+      const { data: userData, error: userError } =
+        await supabaseClient.auth.getUser();
+
+      if (userError) throw userError;
+
+      const user = userData.user;
+
+      if (!user) {
+        throw new Error('Please sign in again.');
+      }
+
+      const { error: detailsError } =
+        await supabaseClient.auth.updateUser({
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            phone_number: phone
+          }
+        });
+
+      if (detailsError) throw detailsError;
+
+      if (
+        newEmail.toLowerCase() !==
+        (user.email || '').toLowerCase()
+      ) {
+        const { error: emailError } =
+          await supabaseClient.auth.updateUser({
+            email: newEmail
+          });
+
+        if (emailError) throw emailError;
+
+        if (message) {
+          message.textContent =
+            'Your personal details have been saved. Please check your email for confirmation instructions to complete your email address change.';
+        }
+
+      } else if (message) {
+        message.textContent =
+          'Your personal details have been saved successfully.';
+      }
+
+      await refreshAccount();
+
+    } catch (error) {
+      console.error('Could not update personal details:', error);
+
+      if (message) {
+        message.textContent =
+          error.message ||
+          'Could not save your details. Please try again.';
+      }
+
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+);
+
 /* =========================================================
-   REFERRAL LINK AND DASHBOARD
+   CHANGE ACCOUNT PASSWORD
+   ========================================================= */
+
+element('changePasswordForm')?.addEventListener(
+  'submit',
+  async (event) => {
+    event.preventDefault();
+
+    const button = element('changePasswordButton');
+    const message = element('changePasswordMessage');
+
+    const password =
+      element('newAccountPassword')?.value || '';
+
+    const confirmation =
+      element('confirmNewAccountPassword')?.value || '';
+
+    if (message) message.textContent = '';
+
+    if (password.length < 8) {
+      if (message) {
+        message.textContent =
+          'Your new password must contain at least 8 characters.';
+      }
+      return;
+    }
+
+    if (password !== confirmation) {
+      if (message) {
+        message.textContent =
+          'Your new passwords do not match.';
+      }
+      return;
+    }
+
+    if (button) button.disabled = true;
+
+    if (message) {
+      message.textContent = 'Updating your password…';
+    }
+
+    try {
+      const { data } =
+        await supabaseClient.auth.getSession();
+
+      if (!data.session) {
+        throw new Error('Please sign in again.');
+      }
+
+      const { error } =
+        await supabaseClient.auth.updateUser({
+          password
+        });
+
+      if (error) throw error;
+
+      element('changePasswordForm')?.reset();
+
+      if (message) {
+        message.textContent =
+          'Your password has been updated successfully.';
+      }
+
+    } catch (error) {
+      console.error('Could not update password:', error);
+
+      if (message) {
+        message.textContent =
+          error.message ||
+          'Could not update your password. Please try again.';
+      }
+
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+);
+
+/* =========================================================
+   REFERRAL DASHBOARD
    ========================================================= */
 
 function setReferralMessage(message) {
@@ -794,15 +1023,89 @@ function clearReferralDashboard(
       'Sign in to generate your referral link';
   }
 
-  const copyButton = element('copyReferralLinkButton');
-  const shareButton = element('shareReferralLinkButton');
+  if (element('copyReferralLinkButton')) {
+    element('copyReferralLinkButton').disabled = true;
+  }
 
-  if (copyButton) copyButton.disabled = true;
-  if (shareButton) shareButton.disabled = true;
+  if (element('shareReferralLinkButton')) {
+    element('shareReferralLinkButton').disabled = true;
+  }
 
   setText('successfulReferralCount', '0');
   setText('referralRewardCount', '0');
+  setText('availableReferralRewardCount', '0');
+
   setReferralMessage(message);
+
+  const rewardsList = element('referralRewardsList');
+
+  if (rewardsList) {
+    rewardsList.replaceChildren(
+      makeParagraph('Sign in to view your free entries and rewards.')
+    );
+  }
+
+  setHidden('referralRewardSelect', false);
+
+  if (element('referralRewardSelect')) {
+    element('referralRewardSelect').replaceChildren(
+      new Option('No available rewards', '')
+    );
+    element('referralRewardSelect').disabled = true;
+  }
+
+  if (element('referralCompetitionSelect')) {
+    element('referralCompetitionSelect').replaceChildren(
+      new Option('Sign in to continue', '')
+    );
+    element('referralCompetitionSelect').disabled = true;
+  }
+
+  if (element('claimReferralRewardButton')) {
+    element('claimReferralRewardButton').disabled = true;
+  }
+
+  setText(
+    'referralClaimMessage',
+    'Sign in to claim a free entry.'
+  );
+}
+
+function populateReferralCompetitionSelect(competitions) {
+  const select = element('referralCompetitionSelect');
+
+  if (!select) return;
+
+  const previousValue = select.value;
+
+  select.replaceChildren(
+    new Option(
+      competitions.length
+        ? 'Choose a competition'
+        : 'No open competitions',
+      ''
+    )
+  );
+
+  competitions.forEach((competition) => {
+    select.add(
+      new Option(
+        competition.name,
+        competition.id
+      )
+    );
+  });
+
+  if (
+    previousValue &&
+    competitions.some(
+      item => String(item.id) === previousValue
+    )
+  ) {
+    select.value = previousValue;
+  }
+
+  select.disabled = competitions.length === 0;
 }
 
 async function loadMyReferralDashboard(user) {
@@ -814,12 +1117,6 @@ async function loadMyReferralDashboard(user) {
   }
 
   setReferralMessage('Loading your referral details…');
-
-  const linkInput = element('referralLink');
-
-  if (linkInput) {
-    linkInput.placeholder = 'Generating your referral link…';
-  }
 
   try {
     const {
@@ -841,16 +1138,20 @@ async function loadMyReferralDashboard(user) {
     const referralUrl = new URL(SITE_URL);
     referralUrl.searchParams.set('ref', referralCode);
 
+    const linkInput = element('referralLink');
+
     if (linkInput) {
       linkInput.value = referralUrl.toString();
       linkInput.placeholder = '';
     }
 
-    const copyButton = element('copyReferralLinkButton');
-    const shareButton = element('shareReferralLinkButton');
+    if (element('copyReferralLinkButton')) {
+      element('copyReferralLinkButton').disabled = false;
+    }
 
-    if (copyButton) copyButton.disabled = false;
-    if (shareButton) shareButton.disabled = false;
+    if (element('shareReferralLinkButton')) {
+      element('shareReferralLinkButton').disabled = false;
+    }
 
     const {
       data: referrals,
@@ -867,8 +1168,9 @@ async function loadMyReferralDashboard(user) {
       error: rewardsError
     } = await supabaseClient
       .from('referral_rewards')
-      .select('id, status, expires_at')
-      .eq('user_id', user.id);
+      .select('id, status, expires_at, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
     if (rewardsError) throw rewardsError;
 
@@ -878,12 +1180,86 @@ async function loadMyReferralDashboard(user) {
       referral => referral.status === 'qualified'
     ).length;
 
-    setText('successfulReferralCount', String(successfulCount));
-    setText('referralRewardCount', String((rewards || []).length));
+    const availableRewards = (rewards || []).filter((reward) => {
+      return (
+        reward.status === 'available' &&
+        reward.expires_at &&
+        new Date(reward.expires_at).getTime() > Date.now()
+      );
+    });
+
+    setText(
+      'successfulReferralCount',
+      String(successfulCount)
+    );
+
+    setText(
+      'referralRewardCount',
+      String((rewards || []).length)
+    );
+
+    setText(
+      'availableReferralRewardCount',
+      String(availableRewards.length)
+    );
+
+    const rewardsList = element('referralRewardsList');
+
+    if (rewardsList) {
+      rewardsList.replaceChildren();
+
+      if (!rewards?.length) {
+        rewardsList.appendChild(
+          makeParagraph('You have not earned a referral reward yet.')
+        );
+      } else {
+        rewards.forEach((reward) => {
+          const item = document.createElement('article');
+          item.className = 'history-card';
+
+          const status = document.createElement('p');
+          status.textContent =
+            `Reward status: ${reward.status || 'Unavailable'}`;
+
+          const expiry = document.createElement('p');
+          expiry.textContent =
+            `Expires: ${formatDate(reward.expires_at)}`;
+
+          item.append(status, expiry);
+          rewardsList.appendChild(item);
+        });
+      }
+    }
+
+    const rewardSelect = element('referralRewardSelect');
+
+    if (rewardSelect) {
+      rewardSelect.replaceChildren(
+        new Option(
+          availableRewards.length
+            ? 'Choose an available reward'
+            : 'No available rewards',
+          ''
+        )
+      );
+
+      availableRewards.forEach((reward) => {
+        rewardSelect.add(
+          new Option(
+            `Free entry — expires ${formatDate(reward.expires_at)}`,
+            reward.id
+          )
+        );
+      });
+
+      rewardSelect.disabled = availableRewards.length === 0;
+    }
 
     setReferralMessage(
       'Your personal referral link is ready to share.'
     );
+
+    updateReferralClaimButton();
 
   } catch (error) {
     if (requestNumber !== referralRequestNumber) return;
@@ -896,6 +1272,24 @@ async function loadMyReferralDashboard(user) {
     );
   }
 }
+
+function updateReferralClaimButton() {
+  const reward = element('referralRewardSelect')?.value;
+  const competition =
+    element('referralCompetitionSelect')?.value;
+
+  const button = element('claimReferralRewardButton');
+
+  if (button) {
+    button.disabled = !(reward && competition);
+  }
+}
+
+element('referralRewardSelect')
+  ?.addEventListener('change', updateReferralClaimButton);
+
+element('referralCompetitionSelect')
+  ?.addEventListener('change', updateReferralClaimButton);
 
 async function copyReferralLink() {
   const link = element('referralLink')?.value.trim();
@@ -912,6 +1306,7 @@ async function copyReferralLink() {
       await navigator.clipboard.writeText(link);
     } else {
       const input = element('referralLink');
+
       input.focus();
       input.select();
 
@@ -957,6 +1352,7 @@ async function shareReferralLink() {
       setReferralMessage(
         'Your referral link is ready to share.'
       );
+
     } else {
       await copyReferralLink();
     }
@@ -978,6 +1374,21 @@ element('copyReferralLinkButton')
 element('shareReferralLinkButton')
   ?.addEventListener('click', shareReferralLink);
 
+/*
+ * Referral reward redemption is intentionally not connected here yet.
+ * The existing backend requires a verified challenge ID as well as
+ * a reward ID. We must connect the exact challenge-verification
+ * sequence before enabling this button.
+ */
+
+element('claimReferralRewardButton')
+  ?.addEventListener('click', () => {
+    setText(
+      'referralClaimMessage',
+      'Free reward claims are not available yet. Your reward remains in your account; no payment has been taken.'
+    );
+  });
+
 /* =========================================================
    ACCOUNT INTERFACE
    ========================================================= */
@@ -988,6 +1399,7 @@ function updateAccountInterface(session) {
 
   setHidden('accountHeaderButton', signedIn);
   setHidden('headerSignOutButton', !signedIn);
+
   setHidden('accountSectionButton', false);
   setHidden('accountSectionSignOutButton', !signedIn);
 
@@ -1048,187 +1460,13 @@ function updateAccountInterface(session) {
 }
 
 /* =========================================================
-   SAVE PERSONAL DETAILS
-   ========================================================= */
-
-element('personalDetailsForm')?.addEventListener(
-  'submit',
-  async (event) => {
-    event.preventDefault();
-
-    const button = element('savePersonalDetailsButton');
-    const message = element('personalDetailsMessage');
-
-    const firstName = element('profileFirstName')?.value.trim();
-    const lastName = element('profileLastName')?.value.trim();
-    const phone = element('profilePhone')?.value.trim() || '';
-    const newEmail = element('profileEmail')?.value.trim();
-
-    if (message) message.textContent = '';
-
-    if (!firstName || !lastName || !newEmail) {
-      if (message) {
-        message.textContent =
-          'Please enter your first name, surname and email address.';
-      }
-      return;
-    }
-
-    if (firstName.length > 80 || lastName.length > 80) {
-      if (message) {
-        message.textContent =
-          'Your first name and surname must each be no longer than 80 characters.';
-      }
-      return;
-    }
-
-    if (phone.length > 30) {
-      if (message) {
-        message.textContent =
-          'Your phone number must be no longer than 30 characters.';
-      }
-      return;
-    }
-
-    if (button) button.disabled = true;
-    if (message) message.textContent = 'Saving your details…';
-
-    try {
-      const { data: userData, error: userError } =
-        await supabaseClient.auth.getUser();
-
-      if (userError) throw userError;
-
-      const user = userData.user;
-
-      if (!user) throw new Error('Please sign in again.');
-
-      const { error: detailsError } =
-        await supabaseClient.auth.updateUser({
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            phone_number: phone
-          }
-        });
-
-      if (detailsError) throw detailsError;
-
-      if (
-        newEmail.toLowerCase() !==
-        (user.email || '').toLowerCase()
-      ) {
-        const { error: emailError } =
-          await supabaseClient.auth.updateUser({
-            email: newEmail
-          });
-
-        if (emailError) throw emailError;
-
-        if (message) {
-          message.textContent =
-            'Your personal details have been saved. Please check your email for confirmation instructions to complete your email address change.';
-        }
-      } else if (message) {
-        message.textContent =
-          'Your personal details have been saved successfully.';
-      }
-
-      await refreshAccount();
-
-    } catch (error) {
-      console.error('Could not update personal details:', error);
-
-      if (message) {
-        message.textContent =
-          error.message ||
-          'Could not save your details. Please try again.';
-      }
-
-    } finally {
-      if (button) button.disabled = false;
-    }
-  }
-);
-
-/* =========================================================
-   CHANGE ACCOUNT PASSWORD
-   ========================================================= */
-
-element('changePasswordForm')?.addEventListener(
-  'submit',
-  async (event) => {
-    event.preventDefault();
-
-    const button = element('changePasswordButton');
-    const message = element('changePasswordMessage');
-
-    const password = element('newAccountPassword')?.value || '';
-    const confirmation =
-      element('confirmNewAccountPassword')?.value || '';
-
-    if (message) message.textContent = '';
-
-    if (password.length < 8) {
-      if (message) {
-        message.textContent =
-          'Your new password must contain at least 8 characters.';
-      }
-      return;
-    }
-
-    if (password !== confirmation) {
-      if (message) {
-        message.textContent = 'Your new passwords do not match.';
-      }
-      return;
-    }
-
-    if (button) button.disabled = true;
-    if (message) message.textContent = 'Updating your password…';
-
-    try {
-      const { data } = await supabaseClient.auth.getSession();
-
-      if (!data.session) {
-        throw new Error('Please sign in again.');
-      }
-
-      const { error } = await supabaseClient.auth.updateUser({
-        password
-      });
-
-      if (error) throw error;
-
-      element('changePasswordForm')?.reset();
-
-      if (message) {
-        message.textContent =
-          'Your password has been updated successfully.';
-      }
-
-    } catch (error) {
-      console.error('Could not update password:', error);
-
-      if (message) {
-        message.textContent =
-          error.message ||
-          'Could not update your password. Please try again.';
-      }
-
-    } finally {
-      if (button) button.disabled = false;
-    }
-  }
-);
-
-/* =========================================================
-   REFRESH ACCOUNT AND ACCOUNT HISTORY
+   REFRESH ACCOUNT AND HISTORY
    ========================================================= */
 
 async function refreshAccount() {
   try {
-    const { data, error } = await supabaseClient.auth.getSession();
+    const { data, error } =
+      await supabaseClient.auth.getSession();
 
     if (error) throw error;
 
@@ -1239,6 +1477,7 @@ async function refreshAccount() {
         loadMyHistory(),
         loadMyReferralDashboard(data.session.user)
       ]);
+
     } else {
       const history = element('entryHistory');
 
@@ -1272,9 +1511,16 @@ element('accountForm')?.addEventListener(
 
     const email = element('accountEmail')?.value.trim();
     const password = element('accountPassword')?.value;
-    const firstName = element('accountFirstName')?.value.trim();
-    const lastName = element('accountLastName')?.value.trim();
-    const phone = element('accountPhone')?.value.trim() || '';
+
+    const firstName =
+      element('accountFirstName')?.value.trim();
+
+    const lastName =
+      element('accountLastName')?.value.trim();
+
+    const phone =
+      element('accountPhone')?.value.trim() || '';
+
     const confirmPassword =
       element('accountConfirmPassword')?.value;
 
@@ -1290,6 +1536,7 @@ element('accountForm')?.addEventListener(
     }
 
     if (submit) submit.disabled = true;
+
     showAccountMessage('Please wait…');
 
     try {
@@ -1341,7 +1588,8 @@ element('accountForm')?.addEventListener(
           pendingReferralCode &&
           /^PP-[A-Z0-9]{12}$/.test(pendingReferralCode)
         ) {
-          signupMetadata.referral_code = pendingReferralCode;
+          signupMetadata.referral_code =
+            pendingReferralCode;
         }
 
         const { data, error } =
@@ -1392,19 +1640,24 @@ element('accountForm')?.addEventListener(
         if (error) throw error;
 
         showAccountMessage('Signed in successfully.');
+
         await refreshAccount();
         finishSuccessfulAuthentication();
       }
 
     } catch (error) {
-      console.error('Account registration or sign-in failed:', error);
+      console.error(
+        'Account registration or sign-in failed:',
+        error
+      );
 
       showAccountMessage(
         error.message || 'Could not complete the request.'
       );
 
     } finally {
-      const { data } = await supabaseClient.auth.getSession();
+      const { data } =
+        await supabaseClient.auth.getSession();
 
       if (submit) {
         submit.disabled = Boolean(data.session);
@@ -1420,10 +1673,13 @@ element('accountForm')?.addEventListener(
 async function signOutAccount(reason = 'manual') {
   stopIdleLogout();
 
-  const { error } = await supabaseClient.auth.signOut();
+  const { error } =
+    await supabaseClient.auth.signOut();
 
   if (error) {
-    showAccountMessage('Could not sign out. Please try again.');
+    showAccountMessage(
+      'Could not sign out. Please try again.'
+    );
     return;
   }
 
@@ -1431,10 +1687,14 @@ async function signOutAccount(reason = 'manual') {
   sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
 
   accountMode = 'signin';
+
   element('accountForm')?.reset();
 
   setText('accountTitle', 'Sign in');
-  setText('accountModeButton', 'Need an account? Register');
+  setText(
+    'accountModeButton',
+    'Need an account? Register'
+  );
 
   const submit = document.querySelector(
     '#accountForm button[type="submit"]'
@@ -1485,7 +1745,9 @@ async function loadMyHistory() {
 
   const requestNumber = ++historyRequestNumber;
 
-  history.replaceChildren(makeParagraph('Loading your history…'));
+  history.replaceChildren(
+    makeParagraph('Loading your history…')
+  );
 
   try {
     const result = await callEdgeFunction(
@@ -1517,7 +1779,8 @@ async function loadMyHistory() {
       card.className = 'history-card';
 
       const title = document.createElement('h3');
-      title.textContent = item.competition_name || 'Competition';
+      title.textContent =
+        item.competition_name || 'Competition';
 
       const kind = document.createElement('p');
       kind.textContent =
@@ -1530,19 +1793,24 @@ async function loadMyHistory() {
         `Status: ${item.status || 'Unavailable'}`;
 
       const date = document.createElement('p');
-      date.textContent = `Date: ${formatDate(item.created_at)}`;
+      date.textContent =
+        `Date: ${formatDate(item.created_at)}`;
 
       card.append(title, kind, status, date);
 
       if (item.entry_number != null) {
         const number = document.createElement('p');
-        number.textContent = `Entry number: ${item.entry_number}`;
+        number.textContent =
+          `Entry number: ${item.entry_number}`;
+
         card.appendChild(number);
       }
 
       const entryId = item.entry_id || item.id;
       const isEntry = item.record_type === 'entry';
-      const entryStatus = String(item.status || '').toLowerCase();
+
+      const entryStatus =
+        String(item.status || '').toLowerCase();
 
       const isEligibleEntry =
         isEntry &&
@@ -1690,7 +1958,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 /* =========================================================
-   TEN-TASK COMPETITION GAME
+   TEN-TASK VISUAL GAME
    ========================================================= */
 
 const GAME_OBJECT_ICONS = {
@@ -1718,6 +1986,7 @@ function gameElement(id) {
 
 function setGameStatus(message) {
   const node = gameElement('gameStatus');
+
   if (node) node.textContent = message;
 }
 
@@ -1742,6 +2011,13 @@ function closeCompetitionGame() {
   activeGameEntryId = null;
   activeGameCompetitionId = null;
   activeGameNeedsPayment = false;
+
+  const payButton = gameElement('gamePayButton');
+
+  if (payButton) {
+    payButton.disabled = false;
+    payButton.textContent = 'Continue to PayFast';
+  }
 
   loadMyHistory();
 }
@@ -1785,7 +2061,9 @@ function renderGameGrid(grid) {
   const host = gameElement('gameObjectGrid');
 
   if (!host) {
-    setGameStatus('The game board is unavailable. Please contact support.');
+    setGameStatus(
+      'The game board is unavailable. Please contact support.'
+    );
     return false;
   }
 
@@ -1797,6 +2075,7 @@ function renderGameGrid(grid) {
         'This task has no visual board data. Please contact support before continuing.'
       )
     );
+
     return false;
   }
 
@@ -1814,7 +2093,8 @@ function renderGameGrid(grid) {
 
     const icon = document.createElement('span');
     icon.className = 'game-object-icon';
-    icon.textContent = GAME_OBJECT_ICONS[object] || '◆';
+    icon.textContent =
+      GAME_OBJECT_ICONS[object] || '◆';
 
     const caption = document.createElement('span');
     caption.className = 'game-object-caption';
@@ -1823,6 +2103,7 @@ function renderGameGrid(grid) {
       `${GAME_COLOUR_NAMES[colour] || colour} ${object}`;
 
     tile.dataset.colour = colour;
+
     tile.append(icon, caption);
     host.appendChild(tile);
   });
@@ -1841,13 +2122,22 @@ function showGamePaymentPanel() {
   setHidden('gameCompletePanel', false);
   setHidden('gamePaymentPanel', !activeGameNeedsPayment);
 
-  setText(
-    'gameProgressText',
-    '10 of 10 complete'
-  );
+  setText('gameProgressText', '10 of 10 complete');
+  setText('gameTimerText', 'Challenge completed');
 
   const progressBar = gameElement('gameProgressBar');
-  if (progressBar) progressBar.style.width = '100%';
+
+  if (progressBar) {
+    progressBar.style.width = '100%';
+  }
+
+  const progressTrack = document.querySelector(
+    '.game-progress-track'
+  );
+
+  if (progressTrack) {
+    progressTrack.setAttribute('aria-valuenow', '10');
+  }
 
   setText(
     'gameFinalSummary',
@@ -1870,11 +2160,84 @@ function showGamePaymentPanel() {
   }
 }
 
+/* =========================================================
+   GAMEPLAY COUNTDOWN — 30 MINUTES
+   ========================================================= */
+
+function startGameplayCountdown() {
+  clearGameCountdown();
+
+  const timerNode = gameElement('gameTimerText');
+
+  const deadline = new Date(
+    activeGameAttempt?.gameplay_expires_at || ''
+  ).getTime();
+
+  if (!Number.isFinite(deadline)) {
+    if (timerNode) {
+      timerNode.textContent = 'Challenge timer unavailable';
+    }
+
+    return;
+  }
+
+  function updateTimer() {
+    const remaining = deadline - Date.now();
+
+    if (remaining <= 0) {
+      if (timerNode) {
+        timerNode.textContent = '00:00 remaining';
+      }
+
+      clearGameCountdown();
+
+      setGameStatus(
+        'Your 30-minute challenge period has expired. This attempt can no longer be continued.'
+      );
+
+      const optionsHost = gameElement('gameAnswerOptions');
+
+      optionsHost
+        ?.querySelectorAll('button')
+        .forEach(button => {
+          button.disabled = true;
+        });
+
+      return;
+    }
+
+    const totalSeconds = Math.floor(remaining / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    if (timerNode) {
+      timerNode.textContent =
+        `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} remaining`;
+    }
+  }
+
+  updateTimer();
+
+  gameCountdownInterval = setInterval(
+    updateTimer,
+    1000
+  );
+}
+
+/* =========================================================
+   RENDER CURRENT GAME TASK
+   ========================================================= */
+
 function renderCurrentGameTask() {
   const task = currentUnansweredTask();
 
-  const completedCount = activeGameCompletedTaskIds.length;
-  const progress = Math.min(100, completedCount * 10);
+  const completedCount =
+    activeGameCompletedTaskIds.length;
+
+  const progress = Math.min(
+    100,
+    completedCount * 10
+  );
 
   setText(
     'gameProgressText',
@@ -1882,7 +2245,21 @@ function renderCurrentGameTask() {
   );
 
   const progressBar = gameElement('gameProgressBar');
-  if (progressBar) progressBar.style.width = `${progress}%`;
+
+  if (progressBar) {
+    progressBar.style.width = `${progress}%`;
+  }
+
+  const progressTrack = document.querySelector(
+    '.game-progress-track'
+  );
+
+  if (progressTrack) {
+    progressTrack.setAttribute(
+      'aria-valuenow',
+      String(completedCount)
+    );
+  }
 
   if (!task) {
     showGamePaymentPanel();
@@ -1907,7 +2284,7 @@ function renderCurrentGameTask() {
     'Study the objects and choose the correct answer.'
   );
 
-  // Deliberately do not display scores or correctness.
+  // Never display answer correctness, score or accuracy.
   setText('gameAnswerFeedback', '');
 
   if (!renderGameGrid(data.grid)) {
@@ -1940,7 +2317,8 @@ function renderCurrentGameTask() {
 
     button.type = 'button';
     button.className = 'game-answer-button';
-    button.textContent = `${option.key}. ${option.label}`;
+    button.textContent =
+      `${option.key}. ${option.label}`;
 
     button.addEventListener('click', () => {
       submitGameAnswer(task, option.key, button);
@@ -1952,6 +2330,8 @@ function renderCurrentGameTask() {
   setGameStatus(
     'Choose carefully. You can answer this task only once.'
   );
+
+  startGameplayCountdown();
 }
 
 /* =========================================================
@@ -1986,15 +2366,32 @@ async function startCompetitionGame(
 
   activeGameNeedsPayment = mode === 'competition';
 
+  gameSubmitting = false;
+  gamePaymentBusy = false;
+
   gameElement('competitionGame')?.classList.remove('hidden');
 
-  setText('gameCompetitionTitle', competitionName);
+  setText(
+    'gameCompetitionTitle',
+    competitionName
+  );
 
   setHidden('gameTaskCard', true);
   setHidden('gameCompletePanel', true);
   setHidden('gamePaymentPanel', true);
 
-  setGameStatus('Loading your saved competition attempt…');
+  setText('gameTimerText', '30:00 remaining');
+
+  const payButton = gameElement('gamePayButton');
+
+  if (payButton) {
+    payButton.disabled = false;
+    payButton.textContent = 'Continue to PayFast';
+  }
+
+  setGameStatus(
+    'Loading your saved competition attempt…'
+  );
 
   try {
     const requestBody =
@@ -2021,6 +2418,7 @@ async function startCompetitionGame(
     }
 
     activeGameEntryId = String(result.entry.id);
+
     activeGameCompetitionId =
       mode === 'competition' ? String(id) : null;
 
@@ -2032,17 +2430,12 @@ async function startCompetitionGame(
         ? result.completed_task_ids
         : [];
 
-    // A submitted attempt has finished the game and must proceed
-    // to payment, not display the tasks again.
     if (
       activeGameAttempt.status === 'submitted' ||
       activeGameCompletedTaskIds.length === 10
     ) {
-      if (mode === 'competition') {
-        activeGameNeedsPayment = true;
-      } else {
-        activeGameNeedsPayment = false;
-      }
+      activeGameNeedsPayment =
+        mode === 'competition';
 
       showGamePaymentPanel();
       return;
@@ -2055,10 +2448,14 @@ async function startCompetitionGame(
     }
 
     setHidden('gamePaymentPanel', true);
+
     renderCurrentGameTask();
 
   } catch (error) {
-    console.error('Could not start competition attempt:', error);
+    console.error(
+      'Could not start competition attempt:',
+      error
+    );
 
     setGameStatus(
       error.message ||
@@ -2071,7 +2468,11 @@ async function startCompetitionGame(
    SUBMIT ONE ANSWER
    ========================================================= */
 
-async function submitGameAnswer(task, answerKey, clickedButton) {
+async function submitGameAnswer(
+  task,
+  answerKey,
+  clickedButton
+) {
   if (
     gameSubmitting ||
     !activeGameAttempt ||
@@ -2118,7 +2519,9 @@ async function submitGameAnswer(task, answerKey, clickedButton) {
       activeGameCompletedTaskIds.push(task.id);
     }
 
-    // Do not read or display correctness, points or score.
+    // The server response contains no score or correctness data.
+    // The customer is never shown whether this answer was correct.
+
     if (
       result.completed ||
       activeGameCompletedTaskIds.length === 10
@@ -2127,9 +2530,9 @@ async function submitGameAnswer(task, answerKey, clickedButton) {
         'All ten answers have been submitted. Loading your payment details…'
       );
 
+      clearGameCountdown();
+
       if (activeGameCompetitionId) {
-        // Ask the server for the saved submitted attempt and
-        // its authoritative payment expiry time.
         const refreshed = await callEdgeFunction(
           START_COMPETITION_ATTEMPT_URL,
           {
@@ -2139,7 +2542,8 @@ async function submitGameAnswer(task, answerKey, clickedButton) {
 
         if (
           !refreshed.attempt ||
-          refreshed.attempt.status !== 'submitted'
+          refreshed.attempt.status !== 'submitted' ||
+          !refreshed.entry
         ) {
           throw new Error(
             'Your answers were saved, but the payment details could not be loaded. Please reopen this competition from the competitions page.'
@@ -2147,7 +2551,10 @@ async function submitGameAnswer(task, answerKey, clickedButton) {
         }
 
         activeGameAttempt = refreshed.attempt;
-        activeGameEntryId = String(refreshed.entry.id);
+
+        activeGameEntryId =
+          String(refreshed.entry.id);
+
         activeGameCompletedTaskIds =
           Array.isArray(refreshed.completed_task_ids)
             ? refreshed.completed_task_ids
@@ -2167,7 +2574,10 @@ async function submitGameAnswer(task, answerKey, clickedButton) {
     }
 
   } catch (error) {
-    console.error('Could not submit competition answer:', error);
+    console.error(
+      'Could not submit competition answer:',
+      error
+    );
 
     setGameStatus(
       error.message ||
@@ -2184,13 +2594,17 @@ async function submitGameAnswer(task, answerKey, clickedButton) {
 }
 
 /* =========================================================
-   PAYMENT COUNTDOWN
+   PAYMENT COUNTDOWN — 30 MINUTES AFTER COMPLETION
    ========================================================= */
 
 function startPaymentCountdown() {
   clearGameCountdown();
 
-  const timerNode = gameElement('gamePaymentTimerText');
+  const timerNode =
+    gameElement('gamePaymentTimerText');
+
+  const payButton =
+    gameElement('gamePayButton');
 
   if (!activeGameAttempt?.payment_expires_at) {
     if (timerNode) {
@@ -2198,7 +2612,6 @@ function startPaymentCountdown() {
         'Payment deadline could not be loaded. Please reopen the competition.';
     }
 
-    const payButton = gameElement('gamePayButton');
     if (payButton) payButton.disabled = true;
 
     return;
@@ -2214,6 +2627,8 @@ function startPaymentCountdown() {
         'Payment deadline unavailable.';
     }
 
+    if (payButton) payButton.disabled = true;
+
     return;
   }
 
@@ -2226,8 +2641,9 @@ function startPaymentCountdown() {
           'Your payment window has expired.';
       }
 
-      const payButton = gameElement('gamePayButton');
-      if (payButton) payButton.disabled = true;
+      if (payButton) {
+        payButton.disabled = true;
+      }
 
       clearGameCountdown();
 
@@ -2238,17 +2654,23 @@ function startPaymentCountdown() {
       return;
     }
 
-    const totalSeconds = Math.floor(remaining / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
+    const totalSeconds =
+      Math.floor(remaining / 1000);
+
+    const minutes =
+      Math.floor(totalSeconds / 60);
+
+    const seconds =
+      totalSeconds % 60;
 
     if (timerNode) {
       timerNode.textContent =
         `Time remaining to pay: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
-    const payButton = gameElement('gamePayButton');
-    if (payButton) payButton.disabled = gamePaymentBusy;
+    if (payButton) {
+      payButton.disabled = gamePaymentBusy;
+    }
   }
 
   updateCountdown();
@@ -2260,7 +2682,7 @@ function startPaymentCountdown() {
 }
 
 /* =========================================================
-   CREATE PAYFAST CHECKOUT FOR THIS SAVED ATTEMPT
+   PAYFAST SANDBOX CHECKOUT
    ========================================================= */
 
 async function beginGamePayment() {
@@ -2284,10 +2706,14 @@ async function beginGamePayment() {
     activeGameAttempt.payment_expires_at || ''
   ).getTime();
 
-  if (!Number.isFinite(deadline) || deadline <= Date.now()) {
+  if (
+    !Number.isFinite(deadline) ||
+    deadline <= Date.now()
+  ) {
     setGameStatus(
       'Your payment window has expired. This attempt cannot be paid.'
     );
+
     return;
   }
 
@@ -2297,10 +2723,18 @@ async function beginGamePayment() {
 
   if (payButton) {
     payButton.disabled = true;
-    payButton.textContent = 'Preparing secure checkout…';
+    payButton.textContent =
+      'Preparing secure checkout…';
   }
 
-  setGameStatus('Preparing your PayFast Sandbox checkout…');
+  setGameStatus(
+    'Preparing your PayFast Sandbox checkout…'
+  );
+
+  setText(
+    'gamePaymentMessage',
+    'Connecting to PayFast Sandbox…'
+  );
 
   try {
     const orderResult = await callEdgeFunction(
@@ -2343,30 +2777,43 @@ async function beginGamePayment() {
 
     document.body.appendChild(form);
 
-    // Do not let inactivity logout interrupt the PayFast redirect.
-    sessionStorage.setItem(CHECKOUT_STORAGE_KEY, 'true');
+    // Prevent the 15-minute inactivity logout from interrupting checkout.
+    sessionStorage.setItem(
+      CHECKOUT_STORAGE_KEY,
+      'true'
+    );
+
+    setText(
+      'gamePaymentMessage',
+      'Redirecting to PayFast Sandbox…'
+    );
 
     form.submit();
 
   } catch (error) {
-    console.error('Could not create PayFast checkout:', error);
+    console.error(
+      'Could not create PayFast checkout:',
+      error
+    );
 
     setGameStatus(
       `${error.message || 'Could not prepare checkout.'} Your payment has not been confirmed.`
+    );
+
+    setText(
+      'gamePaymentMessage',
+      error.message ||
+      'Could not prepare checkout. Please try again.'
     );
 
     gamePaymentBusy = false;
 
     if (payButton) {
       payButton.disabled = false;
-      payButton.textContent = 'Pay entry fee';
+      payButton.textContent = 'Continue to PayFast';
     }
   }
 }
-
-/* =========================================================
-   GAME BUTTONS
-   ========================================================= */
 
 gameElement('gamePayButton')
   ?.addEventListener('click', beginGamePayment);
@@ -2375,13 +2822,16 @@ gameElement('gameCloseButton')
   ?.addEventListener('click', closeCompetitionGame);
 
 /* =========================================================
-   LEGACY X/Y CHALLENGE
+   LEGACY X/Y SKILL CHALLENGE
+   Kept for the existing referral reward process.
+   It is not used for paid competition entries.
    ========================================================= */
 
 function setChallengeBusy(busy) {
   challengeBusy = busy;
 
   const button = element('submitChallengeButton');
+
   if (button) button.disabled = busy;
 }
 
@@ -2390,7 +2840,9 @@ async function openChallenge(
   competitionName = 'Competition'
 ) {
   selectedCompetitionId = competitionId;
-  selectedCompetitionName = competitionName || 'Competition';
+  selectedCompetitionName =
+    competitionName || 'Competition';
+
   activeChallengeId = null;
 
   const { data, error } =
@@ -2418,12 +2870,15 @@ async function openChallenge(
 
   modal?.classList.remove('hidden');
 
-  const target = document.querySelector('#board .target');
+  const target = document.querySelector(
+    '#board .target'
+  );
 
   if (target) {
     target.style.left = '50%';
     target.style.top = '50%';
-    target.style.transform = 'translate(-50%, -50%)';
+    target.style.transform =
+      'translate(-50%, -50%)';
   }
 
   try {
@@ -2437,7 +2892,8 @@ async function openChallenge(
       }
     );
 
-    const challenge = result.challenge || result;
+    const challenge =
+      result.challenge || result;
 
     if (
       !challenge.id ||
@@ -2452,19 +2908,30 @@ async function openChallenge(
     activeChallengeId = challenge.id;
 
     if (target) {
-      target.style.left = `${challenge.target_x}%`;
-      target.style.top = `${challenge.target_y}%`;
-      target.style.transform = 'translate(-50%, -50%)';
+      target.style.left =
+        `${challenge.target_x}%`;
+
+      target.style.top =
+        `${challenge.target_y}%`;
+
+      target.style.transform =
+        'translate(-50%, -50%)';
     }
 
     setChallengeMessage(
-      'This older X/Y challenge is not used for the new paid competition flow. Please start the visual competition game instead.'
+      'This older X/Y challenge is not used for paid competition entries. Please use the ten-task visual game for paid competitions.'
     );
 
   } catch (error) {
-    console.error('Could not create challenge:', error);
+    console.error(
+      'Could not create challenge:',
+      error
+    );
 
-    setText('challengeTitle', 'Could not start challenge');
+    setText(
+      'challengeTitle',
+      'Could not start challenge'
+    );
 
     setChallengeMessage(
       error.message || 'Please try again.'
@@ -2477,98 +2944,105 @@ async function openChallenge(
 
 function closeChallenge() {
   modal?.classList.add('hidden');
+
   activeChallengeId = null;
   challengeBusy = false;
 }
 
 /*
- * The old X/Y checkout is deliberately disabled.
- * Paid competition entries must use the ten-task game first.
+ * The old X/Y payment flow is disabled.
+ * Paid competitions must use the ten-task game first.
  */
 async function submitEntry() {
   setChallengeMessage(
-    'The old X/Y checkout is no longer used. Please close this window and start the visual competition game.'
+    'The old X/Y checkout is no longer used for paid competitions. Please close this window and start the visual competition game.'
   );
 }
 
-/* =========================================================
-   BOARD COORDINATES — LEGACY X/Y MODAL
-   ========================================================= */
+element('board')?.addEventListener(
+  'click',
+  (event) => {
+    const board = event.currentTarget;
+    const rect = board.getBoundingClientRect();
 
-element('board')?.addEventListener('click', (event) => {
-  const board = event.currentTarget;
-  const rect = board.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
 
-  if (!rect.width || !rect.height) return;
-
-  const x = Math.max(
-    0,
-    Math.min(
-      100,
-      Math.round(
-        ((event.clientX - rect.left) / rect.width) * 100
+    const x = Math.max(
+      0,
+      Math.min(
+        100,
+        Math.round(
+          ((event.clientX - rect.left) / rect.width) * 100
+        )
       )
-    )
-  );
+    );
 
-  const y = Math.max(
-    0,
-    Math.min(
-      100,
-      Math.round(
-        ((event.clientY - rect.top) / rect.height) * 100
+    const y = Math.max(
+      0,
+      Math.min(
+        100,
+        Math.round(
+          ((event.clientY - rect.top) / rect.height) * 100
+        )
       )
-    )
-  );
+    );
 
-  if (element('x')) element('x').value = x;
-  if (element('y')) element('y').value = y;
-});
+    if (element('x')) {
+      element('x').value = x;
+    }
+
+    if (element('y')) {
+      element('y').value = y;
+    }
+  }
+);
 
 /* =========================================================
    PAYMENT RETURN MESSAGE
    ========================================================= */
 
 (function handlePaymentReturn() {
-  const params = new URLSearchParams(window.location.search);
+  const params =
+    new URLSearchParams(window.location.search);
+
   const payment = params.get('payment');
 
-  if (payment) {
-    // The customer has returned from the external checkout.
-    // Only the verified PayFast ITN can confirm payment.
-    sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
+  if (!payment) return;
 
-    gamePaymentBusy = false;
+  // PayFast has returned the customer to the website.
+  // Only the verified PayFast ITN confirms a payment.
+  sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
 
-    if (payment === 'returned') {
-      setText(
-        'competitionMessage',
-        'You returned from PayFast. Your payment is not confirmed until Pixel Pick verifies it.'
-      );
+  gamePaymentBusy = false;
 
-    } else if (payment === 'cancelled') {
-      setText(
-        'competitionMessage',
-        'Checkout was cancelled. Your entry is not confirmed. If your payment window is still open, you may continue checkout.'
-      );
-    }
+  if (payment === 'returned') {
+    setText(
+      'competitionMessage',
+      'You returned from PayFast. Your payment is not confirmed until Pixel Pick verifies it.'
+    );
 
-    params.delete('payment');
-    params.delete('order_id');
-
-    const query = params.toString();
-
-    const cleanUrl =
-      window.location.pathname +
-      (query ? `?${query}` : '') +
-      window.location.hash;
-
-    window.history.replaceState(
-      {},
-      document.title,
-      cleanUrl
+  } else if (payment === 'cancelled') {
+    setText(
+      'competitionMessage',
+      'Checkout was cancelled. Your entry is not confirmed. If your payment window is still open, you may continue checkout.'
     );
   }
+
+  params.delete('payment');
+  params.delete('order_id');
+
+  const query = params.toString();
+
+  const cleanUrl =
+    window.location.pathname +
+    (query ? `?${query}` : '') +
+    window.location.hash;
+
+  window.history.replaceState(
+    {},
+    document.title,
+    cleanUrl
+  );
 })();
 
 /* =========================================================
@@ -2584,8 +3058,11 @@ element('supportForm')?.addEventListener(
     const button = element('supportSubmitButton');
     const status = element('supportMessageStatus');
 
-    const topic = element('supportTopic')?.value.trim();
-    const message = element('supportMessage')?.value.trim();
+    const topic =
+      element('supportTopic')?.value.trim();
+
+    const message =
+      element('supportMessage')?.value.trim();
 
     if (status) status.textContent = '';
 
@@ -2605,7 +3082,11 @@ element('supportForm')?.addEventListener(
         );
       }
 
-      if (!topic || !message || message.length < 10) {
+      if (
+        !topic ||
+        !message ||
+        message.length < 10
+      ) {
         throw new Error(
           'Please select a topic and enter a message of at least 10 characters.'
         );
@@ -2630,7 +3111,10 @@ element('supportForm')?.addEventListener(
       form.reset();
 
     } catch (error) {
-      console.error('Support enquiry failed:', error);
+      console.error(
+        'Support enquiry failed:',
+        error
+      );
 
       if (status) {
         status.textContent =
@@ -2659,14 +3143,13 @@ supabaseClient.auth.onAuthStateChange(
 
     if (session?.user) {
       startIdleLogout(event);
-    } else {
-      stopIdleLogout();
-    }
 
-    if (session?.user) {
       loadMyHistory();
       loadMyReferralDashboard(session.user);
+
     } else {
+      stopIdleLogout();
+
       const history = element('entryHistory');
 
       if (history) {
@@ -2713,3 +3196,7 @@ element('signOutButton')
 
 element('closeAccountButton')
   ?.addEventListener('click', closeAccount);
+
+/* =========================================================
+   END OF PIXEL PICK CUSTOMER SCRIPT
+   ========================================================= */
