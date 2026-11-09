@@ -605,6 +605,114 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
+<!-- =====================================================
+     PIXEL PICK — TEN-TASK COMPETITION GAME
+     ===================================================== -->
 
+<div
+  id="competitionGame"
+  class="game-overlay hidden"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="gameCompetitionTitle"
+>
+  <div class="game-modal-box">
+
+    <header class="game-header">
+      <div>
+        <p class="game-eyebrow">PIXEL PICK CHALLENGE</p>
+        <h2 id="gameCompetitionTitle">Competition Challenge</h2>
+      </div>
+
+      <button
+        type="button"
+        class="game-close-button"
+        onclick="closeCompetitionGame()"
+        aria-label="Close competition"
+      >
+        &times;
+      </button>
+    </header>
+
+    <div id="gameStatus" class="game-status" aria-live="polite">
+      Get ready for your challenge.
+    </div>
+
+    <div class="game-progress-section">
+      <div class="game-progress-labels">
+        <span id="gameProgressText">Task 1 of 10</span>
+        <span id="gameScoreText">0 points</span>
+      </div>
+
+      <div
+        class="game-progress-track"
+        role="progressbar"
+        aria-label="Competition progress"
+        aria-valuemin="0"
+        aria-valuemax="10"
+        aria-valuenow="0"
+      >
+        <div id="gameProgressBar" class="game-progress-bar"></div>
+      </div>
+    </div>
+
+    <section id="gameTaskCard" class="game-task-card">
+
+      <p id="gameTaskNumber" class="game-task-number">
+        TASK 1
+      </p>
+
+      <h3 id="gameInstruction">
+        Count the objects shown below.
+      </h3>
+
+      <p class="game-help-text">
+        Look carefully and choose one answer. You cannot change
+        your answer after submitting it.
+      </p>
+
+      <div
+        id="gameObjectGrid"
+        class="game-object-grid"
+        aria-label="Puzzle objects"
+      ></div>
+
+      <div
+        id="gameAnswerFeedback"
+        class="game-answer-feedback"
+        aria-live="polite"
+      ></div>
+
+      <div
+        id="gameAnswerOptions"
+        class="game-answer-options"
+        aria-label="Answer options"
+      ></div>
+
+    </section>
+
+    <section id="gameCompletePanel" class="game-complete-panel hidden">
+      <div class="game-complete-icon">🏆</div>
+
+      <h3>Challenge completed!</h3>
+
+      <p id="gameFinalSummary"></p>
+
+      <p class="game-review-note">
+        Your result has been saved. Pixel Pick will review the
+        competition results before confirming a winner.
+      </p>
+
+      <button
+        type="button"
+        class="primary-button game-finish-button"
+        onclick="closeCompetitionGame()"
+      >
+        Close challenge
+      </button>
+    </section>
+
+  </div>
+</div>
 </body>
 </html>
