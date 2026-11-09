@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -82,72 +81,71 @@
       </section>
     </div>
 
-    
-<section id="entries" class="section account page-hidden">
-  <p class="eyebrow">YOUR ACCOUNT</p>
-  <h2>My Challenges &amp; Entries</h2>
+    <!-- MY CHALLENGES AND ENTRIES -->
+    <section id="entries" class="section account page-hidden">
+      <p class="eyebrow">YOUR ACCOUNT</p>
+      <h2>My Challenges &amp; Entries</h2>
 
-  <p id="entryText" role="status" aria-live="polite">
-    Sign in to view your challenge and entry history.
-  </p>
-
-  <div id="entryHistory" class="entry-history" aria-live="polite">
-    <p>Your history will appear here after you sign in.</p>
-  </div>
-
-  <button class="cta" id="historySignInButton" type="button"
-    onclick="openAccount()">
-    Sign in to view history
-  </button>
-
-  <button class="outline" id="clearHistoryButton" type="button">
-    Clear My History
-  </button>
-
-  <!-- CLEAR HISTORY CONFIRMATION POP-UP -->
-  <div id="clearHistoryModal" class="modal hidden">
-    <div class="modal-box" role="dialog" aria-modal="true"
-      aria-labelledby="clearHistoryTitle"
-      aria-describedby="clearHistoryWarning">
-
-      <button class="close" id="closeClearHistoryModal"
-        type="button" aria-label="Close confirmation window">
-        ×
-      </button>
-
-      <p class="eyebrow">ACCOUNT HISTORY</p>
-
-      <h2 id="clearHistoryTitle">Clear My History?</h2>
-
-      <p>
-        Are you sure you want to clear your competition history
-        from your account?
+      <p id="entryText" role="status" aria-live="polite">
+        Sign in to view your challenge and entry history.
       </p>
 
-      <p id="clearHistoryWarning">
-        <strong>This action cannot be undone.</strong>
-      </p>
-
-      <p>
-        This will clear the history displayed in your account. It will not cancel any active entries or payments.
-      </p>
-
-      <div class="clear-history-actions">
-        <button class="outline" id="cancelClearHistoryButton"
-          type="button">
-          Cancel
-        </button>
-
-        <button class="cta" id="confirmClearHistoryButton"
-          type="button">
-          Yes, Clear History
-        </button>
+      <div id="entryHistory" class="entry-history" aria-live="polite">
+        <p>Your history will appear here after you sign in.</p>
       </div>
 
-      <p id="clearHistoryMessage" role="status" aria-live="polite"></p>
-    </div>
-  </div>
-</section>
+      <button class="cta" id="historySignInButton" type="button"
+        onclick="openAccount()">
+        Sign in to view history
+      </button>
+
+      <button class="outline" id="clearHistoryButton" type="button">
+        Clear My History
+      </button>
+
+      <div id="clearHistoryModal" class="modal hidden">
+        <div class="modal-box" role="dialog" aria-modal="true"
+          aria-labelledby="clearHistoryTitle"
+          aria-describedby="clearHistoryWarning">
+
+          <button class="close" id="closeClearHistoryModal"
+            type="button" aria-label="Close confirmation window">
+            ×
+          </button>
+
+          <p class="eyebrow">ACCOUNT HISTORY</p>
+          <h2 id="clearHistoryTitle">Clear My History?</h2>
+
+          <p>
+            Are you sure you want to clear your competition history
+            from your account?
+          </p>
+
+          <p id="clearHistoryWarning">
+            <strong>This action cannot be undone.</strong>
+          </p>
+
+          <p>
+            This will clear the history displayed in your account.
+            It will not cancel any active entries or payments.
+          </p>
+
+          <div class="clear-history-actions">
+            <button class="outline" id="cancelClearHistoryButton"
+              type="button">
+              Cancel
+            </button>
+
+            <button class="cta" id="confirmClearHistoryButton"
+              type="button">
+              Yes, Clear History
+            </button>
+          </div>
+
+          <p id="clearHistoryMessage" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </section>
 
     <!-- MY ACCOUNT AND PERSONAL DETAILS -->
     <section id="accountArea" class="section account page-hidden">
@@ -168,7 +166,6 @@
         Sign out
       </button>
 
-      <!-- PERSONAL DETAILS -->
       <div id="personalDetailsPanel" class="card hidden">
         <h3>Personal Details</h3>
         <p>View and update the information associated with your account.</p>
@@ -220,7 +217,6 @@
 
         <hr>
 
-        <!-- CHANGE PASSWORD -->
         <h3>Change Password</h3>
         <p>Choose a new password for your Pixel Pick account.</p>
 
@@ -242,148 +238,128 @@
       </div>
     </section>
 
-    
-
-<section id="referral" class="section dark page-hidden">
-  <p class="eyebrow">SHARE THE OPPORTUNITY</p>
-  <h2>Refer a Friend</h2>
-
-  <p>
-    Invite friends to join Pixel Pick using your personal referral link.
-    When someone registers through your link and successfully purchases
-    an eligible competition entry, you can earn one free entry.
-  </p>
-
-  <div class="referral-content">
-    <h3>Your unique referral link</h3>
-
-    <p>
-      Share your link with friends. When someone registers through
-      your link and successfully purchases an eligible competition
-      entry, you can earn one free entry.
-    </p>
-
-    <label for="referralLink">Your personal referral link</label>
-    <input
-      id="referralLink"
-      type="text"
-      readonly
-      placeholder="Sign in to generate your referral link"
-      aria-label="Your unique referral link"
-    >
-
-    <div class="referral-actions">
-      <button class="cta" id="copyReferralLinkButton"
-        type="button" disabled>
-        Copy referral link
-      </button>
-
-      <button class="outline" id="shareReferralLinkButton"
-        type="button" disabled>
-        Share link
-      </button>
-    </div>
-
-    <p id="referralMessage" role="status" aria-live="polite">
-      Sign in to access your personal referral link.
-    </p>
-
-    <hr>
-
-    <h3>Your referral activity</h3>
-
-    <div class="referral-stats">
-      <p>
-        <strong>Successful referrals:</strong>
-        <span id="successfulReferralCount">0</span>
-      </p>
+    <!-- REFERRALS -->
+    <section id="referral" class="section dark page-hidden">
+      <p class="eyebrow">SHARE THE OPPORTUNITY</p>
+      <h2>Refer a Friend</h2>
 
       <p>
-        <strong>Free entries earned:</strong>
-        <span id="referralRewardCount">0</span>
+        Invite friends to join Pixel Pick using your personal referral link.
+        When someone registers through your link and successfully purchases
+        an eligible competition entry, you can earn one free entry.
       </p>
 
-      <p>
-        <strong>Available free entries:</strong>
-        <span id="availableReferralRewardCount">0</span>
-      </p>
-    </div>
+      <div class="referral-content">
+        <h3>Your unique referral link</h3>
 
-    <hr>
+        <p>
+          Share your link with friends. When someone registers through
+          your link and successfully purchases an eligible competition
+          entry, you can earn one free entry.
+        </p>
 
-    <h3>Your free entries &amp; rewards</h3>
+        <label for="referralLink">Your personal referral link</label>
+        <input id="referralLink" type="text" readonly
+          placeholder="Sign in to generate your referral link"
+          aria-label="Your unique referral link">
 
-    <p>
-      Each qualifying referral earns one free entry. Rewards are
-      valid for 24 hours after they are issued.
-    </p>
+        <div class="referral-actions">
+          <button class="cta" id="copyReferralLinkButton"
+            type="button" disabled>
+            Copy referral link
+          </button>
 
-    <div id="referralRewardsList" aria-live="polite">
-      <p>Sign in to view your free entries and rewards.</p>
-    </div>
+          <button class="outline" id="shareReferralLinkButton"
+            type="button" disabled>
+            Share link
+          </button>
+        </div>
 
-    <hr>
+        <p id="referralMessage" role="status" aria-live="polite">
+          Sign in to access your personal referral link.
+        </p>
 
-    <h3>Claim your free entry</h3>
+        <hr>
 
-    <p>
-      Select an available reward and an open competition.
-      You will need to complete the skill challenge before your
-      free entry can be confirmed.
-    </p>
+        <h3>Your referral activity</h3>
 
-    <label for="referralRewardSelect">
-      Select your free reward
-    </label>
+        <div class="referral-stats">
+          <p>
+            <strong>Successful referrals:</strong>
+            <span id="successfulReferralCount">0</span>
+          </p>
+          <p>
+            <strong>Free entries earned:</strong>
+            <span id="referralRewardCount">0</span>
+          </p>
+          <p>
+            <strong>Available free entries:</strong>
+            <span id="availableReferralRewardCount">0</span>
+          </p>
+        </div>
 
-    <select id="referralRewardSelect" disabled>
-      <option value="">No available rewards</option>
-    </select>
+        <hr>
 
-    <label for="referralCompetitionSelect">
-      Choose a competition
-    </label>
+        <h3>Your free entries &amp; rewards</h3>
 
-    <select id="referralCompetitionSelect" disabled>
-      <option value="">Loading available competitions...</option>
-    </select>
+        <p>
+          Each qualifying referral earns one free entry.
+          Rewards are valid for 24 hours after they are issued.
+        </p>
 
-    <button
-      class="cta full"
-      id="claimReferralRewardButton"
-      type="button"
-      disabled
-    >
-      Claim your free entry
-    </button>
+        <div id="referralRewardsList" aria-live="polite">
+          <p>Sign in to view your free entries and rewards.</p>
+        </div>
 
-    <p id="referralClaimMessage" role="status" aria-live="polite">
-      Sign in to claim a free entry.
-    </p>
+        <hr>
 
-    <p id="referralClaimConfirmation" role="status"
-      aria-live="polite"></p>
+        <h3>Claim your free entry</h3>
 
-    <p>
-      <strong>Amount charged: R0.00</strong>
-    </p>
+        <p>
+          Select an available reward and an open competition.
+          You will need to complete the skill challenge before your
+          free entry can be confirmed.
+        </p>
 
-    <p>
-      Claiming a free referral entry does not require a payment
-      or PayFast checkout. Each reward can only be redeemed once.
-    </p>
+        <label for="referralRewardSelect">Select your free reward</label>
+        <select id="referralRewardSelect" disabled>
+          <option value="">No available rewards</option>
+        </select>
 
-    <hr>
+        <label for="referralCompetitionSelect">Choose a competition</label>
+        <select id="referralCompetitionSelect" disabled>
+          <option value="">Loading available competitions...</option>
+        </select>
 
-    <p>
-      All referrals and rewards are subject to verification and
-      the applicable Pixel Pick referral programme rules.
-    </p>
-  </div>
-</section>
+        <button class="cta full" id="claimReferralRewardButton"
+          type="button" disabled>
+          Claim your free entry
+        </button>
 
+        <p id="referralClaimMessage" role="status" aria-live="polite">
+          Sign in to claim a free entry.
+        </p>
 
+        <p id="referralClaimConfirmation" role="status"
+          aria-live="polite"></p>
 
+        <p><strong>Amount charged: R0.00</strong></p>
+
+        <p>
+          Claiming a free referral entry does not require a payment
+          or PayFast checkout. Each reward can only be redeemed once.
+        </p>
+
+        <hr>
+
+        <p>
+          All referrals and rewards are subject to verification and
+          the applicable Pixel Pick referral programme rules.
+        </p>
+      </div>
+    </section>
+
+    <!-- CUSTOMER SUPPORT -->
     <section id="support" class="section page-hidden">
       <div class="section-heading">
         <span class="eyebrow">WE'RE HERE TO HELP</span>
@@ -398,7 +374,6 @@
             customercare@pixelpick.com
           </a>
         </p>
-        <p><strong>Response target:</strong> Within 2 business days.</p>
 
         <form id="supportForm">
           <label for="supportTopic">What do you need help with?</label>
@@ -420,12 +395,102 @@
           <button type="submit" id="supportSubmitButton">
             Send enquiry
           </button>
+
           <p id="supportMessageStatus" role="status" aria-live="polite"></p>
         </form>
       </div>
     </section>
 
   </main>
+
+  <!-- TEN-TASK COMPETITION GAME -->
+  <div id="competitionGame" class="modal game-modal hidden">
+    <div class="modal-box game-modal-box"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="gameCompetitionTitle">
+
+      <button class="close game-close" type="button"
+        onclick="closeCompetitionGame()"
+        aria-label="Close competition game">
+        ×
+      </button>
+
+      <p class="eyebrow">PIXEL PICK COMPETITION</p>
+
+      <h2 id="gameCompetitionTitle">Competition</h2>
+
+      <p class="game-intro">
+        Study each visual puzzle carefully and choose one answer.
+        You can answer each task only once.
+      </p>
+
+      <div class="game-progress-section">
+        <div class="game-progress-information">
+          <strong id="gameProgressText">Task 1 of 10</strong>
+          <strong id="gameScoreText">0 points</strong>
+        </div>
+
+        <div
+          class="game-progress-track"
+          role="progressbar"
+          aria-label="Competition task progress"
+          aria-valuemin="0"
+          aria-valuemax="10"
+          aria-valuenow="0">
+          <div id="gameProgressBar" class="game-progress-bar"></div>
+        </div>
+      </div>
+
+      <p id="gameStatus" class="game-status"
+        role="status" aria-live="polite">
+        Preparing your competition attempt...
+      </p>
+
+      <!-- CURRENT TASK -->
+      <div id="gameTaskCard" class="game-task-card hidden">
+        <p id="gameTaskNumber" class="game-task-number">TASK 1</p>
+
+        <h3 id="gameInstruction">
+          Study the objects and choose the correct answer.
+        </h3>
+
+        <div id="gameObjectGrid" class="game-object-grid"
+          aria-label="Visual puzzle board">
+        </div>
+
+        <p id="gameAnswerFeedback" class="game-answer-feedback"
+          role="status" aria-live="polite"></p>
+
+        <h3 class="game-answer-heading">Choose your answer</h3>
+
+        <div id="gameAnswerOptions" class="game-answer-options">
+        </div>
+      </div>
+
+      <!-- FINAL RESULT -->
+      <div id="gameCompletePanel" class="game-complete-panel hidden">
+        <div class="game-complete-icon" aria-hidden="true">🏁</div>
+
+        <h3>Competition tasks completed!</h3>
+
+        <p id="gameFinalSummary">
+          Your result has been saved.
+        </p>
+
+        <p>
+          Your result will be available for review.
+          Completing the tasks does not automatically declare a winner.
+        </p>
+
+        <button class="cta full" type="button"
+          onclick="closeCompetitionGame()">
+          Close competition
+        </button>
+      </div>
+
+    </div>
+  </div>
 
   <!-- SIGN-IN AND REGISTRATION MODAL -->
   <div id="accountModal" class="modal hidden">
@@ -439,7 +504,6 @@
       <h2 id="accountTitle">Sign in</h2>
 
       <form id="accountForm">
-
         <div id="registrationFields" class="hidden">
           <label for="accountFirstName">First name</label>
           <input id="accountFirstName" name="first_name" type="text"
@@ -490,7 +554,7 @@
     </div>
   </div>
 
-  <!-- SKILL CHALLENGE MODAL -->
+  <!-- ENTRY SKILL CHALLENGE MODAL -->
   <div id="modal" class="modal hidden">
     <div class="modal-box" role="dialog" aria-modal="true"
       aria-labelledby="challengeTitle">
@@ -500,7 +564,10 @@
 
       <p class="eyebrow">SKILL CHALLENGE</p>
       <h2 id="challengeTitle">Pick the target pixel</h2>
-      <p>Click the board to select coordinates, then submit your answer.</p>
+
+      <p>
+        Click the board to select coordinates, then submit your answer.
+      </p>
 
       <div class="board" id="board" role="img"
         aria-label="Skill challenge board">
@@ -512,6 +579,7 @@
           X
           <input id="x" type="number" min="0" max="100" value="50">
         </label>
+
         <label for="y">
           Y
           <input id="y" type="number" min="0" max="100" value="50">
@@ -524,6 +592,7 @@
       </button>
 
       <p id="challengeMessage" role="status" aria-live="polite"></p>
+
       <small>
         Prototype: payment and entry confirmation depend on server verification.
       </small>
