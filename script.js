@@ -2,9 +2,8 @@
 /* =========================================================
    PIXEL PICK — CUSTOMER WEBSITE
    Accounts, personal details, password management,
-   password reset, navigation, competitions,
-   challenge verification, Sandbox checkout, support
-   and referral links.
+   navigation, competitions, ten-task visual game,
+   Sandbox PayFast checkout, support and referral links.
    ========================================================= */
 
 const SUPABASE_URL = 'https://cxhclxtbtrsyfigqleeg.supabase.co';
@@ -32,6 +31,12 @@ const SUBMIT_COMPETITION_ANSWER_URL =
 const PENDING_REFERRAL_STORAGE_KEY =
   'pixelPickPendingReferralCode';
 
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+const ACTIVITY_STORAGE_KEY = 'pixelPickLastActivity';
+const CHECKOUT_STORAGE_KEY = 'pixelPickCheckoutInProgress';
+
+const GAME_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
+
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY
@@ -45,24 +50,33 @@ let selectedCompetitionId = null;
 let selectedCompetitionName = 'Competition';
 let activeChallengeId = null;
 let challengeBusy = false;
+
 let historyRequestNumber = 0;
 let referralRequestNumber = 0;
+
 let activeGameAttempt = null;
 let activeGameTasks = [];
 let activeGameCompletedTaskIds = [];
 let activeGameEntryId = null;
+let activeGameCompetitionId = null;
+let activeGameNeedsPayment = false;
+
 let gameSubmitting = false;
+let gamePaymentBusy = false;
+let gameCountdownInterval = null;
+
+let idleLogoutTimer = null;
+let lastActivityAt = 0;
+let lastActivitySavedAt = 0;
+let idleLogoutInProgress = false;
 
 /* =========================================================
-   CAPTURE REFERRAL CODE BEFORE OTHER URL PROCESSING
+   CAPTURE REFERRAL CODE
    ========================================================= */
 
 function captureReferralCodeFromUrl() {
   try {
-    const params = new URLSearchParams(
-      window.location.search
-    );
-
+    const params = new URLSearchParams(window.location.search);
     const referralCode = params.get('ref');
 
     if (!referralCode) return;
@@ -80,27 +94,11 @@ function captureReferralCodeFromUrl() {
     );
 
   } catch (error) {
-    console.error(
-      'Unable to capture referral code:',
-      error
-    );
+    console.error('Unable to capture referral code:', error);
   }
 }
 
-// This runs immediately, before payment-return URL handling.
 captureReferralCodeFromUrl();
-
-/* =========================================================
-   15-MINUTE AUTOMATIC INACTIVITY LOGOUT
-   ========================================================= */
-
-const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
-const ACTIVITY_STORAGE_KEY = 'pixelPickLastActivity';
-
-let idleLogoutTimer = null;
-let lastActivityAt = 0;
-let lastActivitySavedAt = 0;
-let idleLogoutInProgress = false;
 
 /* =========================================================
    GENERAL HELPERS
@@ -172,9 +170,7 @@ async function getAccessToken() {
   const token = data.session?.access_token;
 
   if (!token) {
-    throw new Error(
-      'Please sign in before continuing.'
-    );
+    throw new Error('Please sign in before continuing.');
   }
 
   return token;
@@ -210,6 +206,10 @@ async function callEdgeFunction(url, body) {
    AUTOMATIC LOGOUT AFTER 15 MINUTES
    ========================================================= */
 
+function isPayFastCheckoutInProgress() {
+  return sessionStorage.getItem(CHECKOUT_STORAGE_KEY) === 'true';
+}
+
 function getLastActivityTime() {
   const stored = Number(
     localStorage.getItem(ACTIVITY_STORAGE_KEY)
@@ -225,10 +225,7 @@ function saveActivityTime(force = false) {
 
   lastActivityAt = now;
 
-  if (
-    force ||
-    now - lastActivitySavedAt >= 5000
-  ) {
+  if (force || now - lastActivitySavedAt >= 5000) {
     localStorage.setItem(
       ACTIVITY_STORAGE_KEY,
       String(now)
@@ -250,7 +247,9 @@ function stopIdleLogout() {
 }
 
 function scheduleIdleLogout() {
-  if (idleLogoutInProgress) return;
+  if (idleLogoutInProgress || isPayFastCheckoutInProgress()) {
+    return;
+  }
 
   if (idleLogoutTimer) {
     clearTimeout(idleLogoutTimer);
@@ -259,21 +258,21 @@ function scheduleIdleLogout() {
   const elapsed = Date.now() - lastActivityAt;
   const remaining = IDLE_TIMEOUT_MS - elapsed;
 
-  idleLogoutTimer = setTimeout(() => {
-    checkIdleLogout();
-  }, Math.max(remaining, 0));
+  idleLogoutTimer = setTimeout(
+    checkIdleLogout,
+    Math.max(remaining, 0)
+  );
 }
 
 async function checkIdleLogout() {
-  if (idleLogoutInProgress) return;
+  if (idleLogoutInProgress || isPayFastCheckoutInProgress()) {
+    return;
+  }
 
   const lastActivity = getLastActivityTime();
-
   lastActivityAt = lastActivity;
 
-  const elapsed = Date.now() - lastActivity;
-
-  if (elapsed < IDLE_TIMEOUT_MS) {
+  if (Date.now() - lastActivity < IDLE_TIMEOUT_MS) {
     scheduleIdleLogout();
     return;
   }
@@ -303,20 +302,19 @@ function startIdleLogout(event) {
 }
 
 function setupInactivityLogout() {
-  const activityEvents = [
+  [
     'pointerdown',
     'pointermove',
     'keydown',
     'scroll',
     'touchstart',
     'click'
-  ];
-
-  activityEvents.forEach((eventName) => {
+  ].forEach((eventName) => {
     document.addEventListener(
       eventName,
       () => {
         if (idleLogoutInProgress) return;
+        if (isPayFastCheckoutInProgress()) return;
         saveActivityTime();
       },
       { passive: true }
@@ -324,8 +322,9 @@ function setupInactivityLogout() {
   });
 
   window.addEventListener('storage', (event) => {
-    if (event.key !== ACTIVITY_STORAGE_KEY) return;
-    if (!event.newValue) return;
+    if (event.key !== ACTIVITY_STORAGE_KEY || !event.newValue) {
+      return;
+    }
 
     const timestamp = Number(event.newValue);
 
@@ -348,10 +347,7 @@ function setupPageNavigation() {
   if (!homePage || !competitions || !main) return;
 
   if (competitions.parentElement !== main) {
-    homePage.insertAdjacentElement(
-      'afterend',
-      competitions
-    );
+    homePage.insertAdjacentElement('afterend', competitions);
   }
 
   const pages = [
@@ -362,15 +358,9 @@ function setupPageNavigation() {
   ];
 
   function showPage(page, updateAddress = true) {
-    const validPages = [
-      'home',
-      'competitions',
-      ...pages
-    ];
+    const validPages = ['home', 'competitions', ...pages];
 
-    if (!validPages.includes(page)) {
-      page = 'home';
-    }
+    if (!validPages.includes(page)) page = 'home';
 
     homePage.classList.add('page-hidden');
     competitions.classList.add('page-hidden');
@@ -382,10 +372,8 @@ function setupPageNavigation() {
     if (page === 'home') {
       homePage.classList.remove('page-hidden');
       competitions.classList.remove('page-hidden');
-
     } else if (page === 'competitions') {
       competitions.classList.remove('page-hidden');
-
     } else {
       element(page)?.classList.remove('page-hidden');
     }
@@ -394,24 +382,16 @@ function setupPageNavigation() {
       const newHash = `#${page}`;
 
       if (window.location.hash !== newHash) {
-        window.history.pushState(
-          { page },
-          '',
-          newHash
-        );
+        window.history.pushState({ page }, '', newHash);
       }
     }
 
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   document.querySelectorAll('a[data-page]').forEach((link) => {
     link.addEventListener('click', (event) => {
       event.preventDefault();
-
       showPage(link.dataset.page);
       closeNavigationMenu();
     });
@@ -420,23 +400,22 @@ function setupPageNavigation() {
   document.querySelectorAll('a[href="#home"]').forEach((link) => {
     link.addEventListener('click', (event) => {
       event.preventDefault();
-
       showPage('home');
       closeNavigationMenu();
     });
   });
 
   window.addEventListener('popstate', () => {
-    const page =
-      window.location.hash.replace('#', '') || 'home';
-
-    showPage(page, false);
+    showPage(
+      window.location.hash.replace('#', '') || 'home',
+      false
+    );
   });
 
-  const initialPage =
-    window.location.hash.replace('#', '') || 'home';
-
-  showPage(initialPage, false);
+  showPage(
+    window.location.hash.replace('#', '') || 'home',
+    false
+  );
 }
 
 /* =========================================================
@@ -450,13 +429,8 @@ function closeNavigationMenu() {
   if (!toggle || !panel) return;
 
   panel.classList.add('hidden');
-
   toggle.setAttribute('aria-expanded', 'false');
-
-  toggle.setAttribute(
-    'aria-label',
-    'Open navigation menu'
-  );
+  toggle.setAttribute('aria-label', 'Open navigation menu');
 }
 
 function setupMenu() {
@@ -471,24 +445,15 @@ function setupMenu() {
     const open = panel.classList.contains('hidden');
 
     panel.classList.toggle('hidden', !open);
-
-    toggle.setAttribute(
-      'aria-expanded',
-      String(open)
-    );
-
+    toggle.setAttribute('aria-expanded', String(open));
     toggle.setAttribute(
       'aria-label',
-      open
-        ? 'Close navigation menu'
-        : 'Open navigation menu'
+      open ? 'Close navigation menu' : 'Open navigation menu'
     );
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      closeNavigationMenu();
-    }
+    if (event.key === 'Escape') closeNavigationMenu();
   });
 
   document.addEventListener('click', (event) => {
@@ -511,9 +476,7 @@ async function loadCompetitions() {
 
   if (!grid) return;
 
-  grid.replaceChildren(
-    makeParagraph('Loading competitions…')
-  );
+  grid.replaceChildren(makeParagraph('Loading competitions…'));
 
   if (message) message.textContent = '';
 
@@ -536,7 +499,6 @@ async function loadCompetitions() {
           'There are no open competitions at the moment. Please check back soon.'
         )
       );
-
       return;
     }
 
@@ -560,7 +522,6 @@ async function loadCompetitions() {
       title.textContent = competition.name;
 
       const description = document.createElement('p');
-
       description.textContent =
         competition.prize_description ||
         'See the competition rules for details.';
@@ -569,35 +530,31 @@ async function loadCompetitions() {
       row.className = 'row';
 
       const price = document.createElement('b');
-
       price.textContent = formatRand(
         competition.entry_price_cents
       );
 
       const button = document.createElement('button');
-
       button.type = 'button';
       button.textContent = 'Start skill challenge';
 
+      // NEW FLOW: start the ten-task game BEFORE payment.
       button.addEventListener('click', () => {
-        openChallenge(
-          competition.id,
-          competition.name
+        startCompetitionGame(
+          String(competition.id),
+          competition.name || 'Competition',
+          'competition'
         );
       });
 
       row.append(price, button);
       pad.append(pill, title, description, row);
       card.append(visual, pad);
-
       grid.appendChild(card);
     });
 
   } catch (error) {
-    console.error(
-      'Could not load competitions:',
-      error
-    );
+    console.error('Could not load competitions:', error);
 
     grid.replaceChildren(
       makeParagraph(
@@ -612,22 +569,13 @@ async function loadCompetitions() {
    ========================================================= */
 
 function openAccount() {
-  if (accountModal) {
-    accountModal.classList.remove('hidden');
-  }
-
+  accountModal?.classList.remove('hidden');
   refreshAccount();
 }
 
 function closeAccount() {
-  if (accountModal) {
-    accountModal.classList.add('hidden');
-  }
+  accountModal?.classList.add('hidden');
 }
-
-/* =========================================================
-   AUTOMATIC HOME REDIRECT AFTER SIGN-IN / REGISTRATION
-   ========================================================= */
 
 function finishSuccessfulAuthentication() {
   closeAccount();
@@ -639,11 +587,7 @@ function finishSuccessfulAuthentication() {
     homeLink.click();
   } else {
     window.location.hash = 'home';
-
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
 
@@ -666,37 +610,27 @@ function setupForgotPassword() {
   button.textContent = 'Forgot password?';
   button.className = 'forgot-password-button';
 
-  passwordInput.insertAdjacentElement(
-    'afterend',
-    button
-  );
+  passwordInput.insertAdjacentElement('afterend', button);
 
   button.addEventListener('click', async () => {
-    const email =
-      element('accountEmail')?.value.trim();
+    const email = element('accountEmail')?.value.trim();
 
     if (!email) {
       showAccountMessage(
         'Enter your email address first, then select Forgot password?'
       );
-
       element('accountEmail')?.focus();
       return;
     }
 
     button.disabled = true;
-
-    showAccountMessage(
-      'Sending password-reset email…'
-    );
+    showAccountMessage('Sending password-reset email…');
 
     try {
       const { error } =
         await supabaseClient.auth.resetPasswordForEmail(
           email,
-          {
-            redirectTo: `${SITE_URL}/?reset-password=true`
-          }
+          { redirectTo: `${SITE_URL}/?reset-password=true` }
         );
 
       if (error) throw error;
@@ -706,11 +640,7 @@ function setupForgotPassword() {
       );
 
     } catch (error) {
-      console.error(
-        'Password reset request failed:',
-        error
-      );
-
+      console.error('Password reset request failed:', error);
       showAccountMessage(
         error.message ||
         'Could not request a password reset. Please try again.'
@@ -723,17 +653,14 @@ function setupForgotPassword() {
 }
 
 function updateRegistrationFields(signedIn = false) {
-  const registering =
-    accountMode === 'signup' && !signedIn;
+  const registering = accountMode === 'signup' && !signedIn;
 
   setHidden('registrationFields', !registering);
   setHidden('confirmPasswordField', !registering);
 
   const firstName = element('accountFirstName');
   const lastName = element('accountLastName');
-  const confirmPassword =
-    element('accountConfirmPassword');
-
+  const confirmPassword = element('accountConfirmPassword');
   const phone = element('accountPhone');
 
   if (firstName) {
@@ -758,8 +685,7 @@ function updateRegistrationFields(signedIn = false) {
 }
 
 function toggleAccountMode() {
-  accountMode =
-    accountMode === 'signin' ? 'signup' : 'signin';
+  accountMode = accountMode === 'signin' ? 'signup' : 'signin';
 
   setText(
     'accountTitle',
@@ -774,9 +700,7 @@ function toggleAccountMode() {
 
   if (submit) {
     submit.textContent =
-      accountMode === 'signup'
-        ? 'Register'
-        : 'Sign in';
+      accountMode === 'signup' ? 'Register' : 'Sign in';
   }
 
   setText(
@@ -796,17 +720,12 @@ function toggleAccountMode() {
   }
 
   updateRegistrationFields(false);
-
-  setHidden(
-    'forgotPasswordButton',
-    accountMode !== 'signin'
-  );
-
+  setHidden('forgotPasswordButton', accountMode !== 'signin');
   showAccountMessage('');
 }
 
 /* =========================================================
-   PERSONAL DETAILS DISPLAY
+   PERSONAL DETAILS
    ========================================================= */
 
 function renderPersonalDetails(user) {
@@ -839,8 +758,7 @@ function renderPersonalDetails(user) {
   }
 
   if (element('profileEmail')) {
-    element('profileEmail').value =
-      user.email || '';
+    element('profileEmail').value = user.email || '';
   }
 
   const verified = Boolean(
@@ -854,21 +772,20 @@ function renderPersonalDetails(user) {
       : 'Email address: Not yet verified'
   );
 
-  setText(
-    'accountCreatedDate',
-    formatDate(user.created_at)
-  );
+  setText('accountCreatedDate', formatDate(user.created_at));
 }
 
 /* =========================================================
-   REFERRAL LINK AND REFERRAL DASHBOARD
+   REFERRAL LINK AND DASHBOARD
    ========================================================= */
 
 function setReferralMessage(message) {
   setText('referralMessage', message);
 }
 
-function clearReferralDashboard(message = 'Sign in to access your personal referral link.') {
+function clearReferralDashboard(
+  message = 'Sign in to access your personal referral link.'
+) {
   const linkInput = element('referralLink');
 
   if (linkInput) {
@@ -885,7 +802,6 @@ function clearReferralDashboard(message = 'Sign in to access your personal refer
 
   setText('successfulReferralCount', '0');
   setText('referralRewardCount', '0');
-
   setReferralMessage(message);
 }
 
@@ -906,10 +822,10 @@ async function loadMyReferralDashboard(user) {
   }
 
   try {
-    // Ask the database to create or return this customer's
-    // unique referral code.
-    const { data: referralCode, error: codeError } =
-      await supabaseClient.rpc('get_my_referral_code');
+    const {
+      data: referralCode,
+      error: codeError
+    } = await supabaseClient.rpc('get_my_referral_code');
 
     if (codeError) throw codeError;
 
@@ -923,11 +839,7 @@ async function loadMyReferralDashboard(user) {
     }
 
     const referralUrl = new URL(SITE_URL);
-
-    referralUrl.searchParams.set(
-      'ref',
-      referralCode
-    );
+    referralUrl.searchParams.set('ref', referralCode);
 
     if (linkInput) {
       linkInput.value = referralUrl.toString();
@@ -940,7 +852,6 @@ async function loadMyReferralDashboard(user) {
     if (copyButton) copyButton.disabled = false;
     if (shareButton) shareButton.disabled = false;
 
-    // Only count referrals where this customer is the referrer.
     const {
       data: referrals,
       error: referralsError
@@ -951,7 +862,6 @@ async function loadMyReferralDashboard(user) {
 
     if (referralsError) throw referralsError;
 
-    // Fetch only rewards belonging to this customer.
     const {
       data: rewards,
       error: rewardsError
@@ -962,24 +872,14 @@ async function loadMyReferralDashboard(user) {
 
     if (rewardsError) throw rewardsError;
 
-    // Ignore results from an older request if the account changed.
     if (requestNumber !== referralRequestNumber) return;
 
     const successfulCount = (referrals || []).filter(
-      (referral) => referral.status === 'qualified'
+      referral => referral.status === 'qualified'
     ).length;
 
-    const rewardCount = (rewards || []).length;
-
-    setText(
-      'successfulReferralCount',
-      String(successfulCount)
-    );
-
-    setText(
-      'referralRewardCount',
-      String(rewardCount)
-    );
+    setText('successfulReferralCount', String(successfulCount));
+    setText('referralRewardCount', String((rewards || []).length));
 
     setReferralMessage(
       'Your personal referral link is ready to share.'
@@ -988,10 +888,7 @@ async function loadMyReferralDashboard(user) {
   } catch (error) {
     if (requestNumber !== referralRequestNumber) return;
 
-    console.error(
-      'Could not load referral dashboard:',
-      error
-    );
+    console.error('Could not load referral dashboard:', error);
 
     setReferralMessage(
       error.message ||
@@ -1010,21 +907,15 @@ async function copyReferralLink() {
     return;
   }
 
-  const button = element('copyReferralLinkButton');
-
   try {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(link);
-
     } else {
       const input = element('referralLink');
-
       input.focus();
       input.select();
 
-      const copied = document.execCommand('copy');
-
-      if (!copied) {
+      if (!document.execCommand('copy')) {
         throw new Error('Copy was not successful.');
       }
     }
@@ -1034,10 +925,7 @@ async function copyReferralLink() {
     );
 
   } catch (error) {
-    console.error(
-      'Could not copy referral link:',
-      error
-    );
+    console.error('Could not copy referral link:', error);
 
     setReferralMessage(
       'We could not copy the link automatically. Please select and copy the link from the box.'
@@ -1045,9 +933,6 @@ async function copyReferralLink() {
 
     element('referralLink')?.focus();
     element('referralLink')?.select();
-
-  } finally {
-    if (button) button.blur();
   }
 }
 
@@ -1061,20 +946,17 @@ async function shareReferralLink() {
     return;
   }
 
-  const shareData = {
-    title: 'Join Pixel Pick',
-    text: 'Join me on Pixel Pick and take part in skill competitions.',
-    url: link
-  };
-
   try {
     if (navigator.share) {
-      await navigator.share(shareData);
+      await navigator.share({
+        title: 'Join Pixel Pick',
+        text: 'Join me on Pixel Pick and take part in skill competitions.',
+        url: link
+      });
 
       setReferralMessage(
         'Your referral link is ready to share.'
       );
-
     } else {
       await copyReferralLink();
     }
@@ -1082,10 +964,7 @@ async function shareReferralLink() {
   } catch (error) {
     if (error.name === 'AbortError') return;
 
-    console.error(
-      'Could not share referral link:',
-      error
-    );
+    console.error('Could not share referral link:', error);
 
     setReferralMessage(
       'Sharing is unavailable on this device. Please use the Copy referral link button instead.'
@@ -1109,22 +988,15 @@ function updateAccountInterface(session) {
 
   setHidden('accountHeaderButton', signedIn);
   setHidden('headerSignOutButton', !signedIn);
-
   setHidden('accountSectionButton', false);
   setHidden('accountSectionSignOutButton', !signedIn);
 
   setText(
     'accountSectionButton',
-    signedIn
-      ? 'Account settings'
-      : 'Sign in / Register'
+    signedIn ? 'Account settings' : 'Sign in / Register'
   );
 
-  setText(
-    'accountHeaderButton',
-    'Sign in / Register'
-  );
-
+  setText('accountHeaderButton', 'Sign in / Register');
   setText('headerSignOutButton', 'Sign out');
   setText('accountSectionSignOutButton', 'Sign out');
   setText('signOutButton', 'Sign out');
@@ -1169,9 +1041,7 @@ function updateAccountInterface(session) {
 
   if (!signedIn && submit) {
     submit.textContent =
-      accountMode === 'signup'
-        ? 'Register'
-        : 'Sign in';
+      accountMode === 'signup' ? 'Register' : 'Sign in';
   }
 
   renderPersonalDetails(session?.user || null);
@@ -1189,17 +1059,10 @@ element('personalDetailsForm')?.addEventListener(
     const button = element('savePersonalDetailsButton');
     const message = element('personalDetailsMessage');
 
-    const firstName =
-      element('profileFirstName')?.value.trim();
-
-    const lastName =
-      element('profileLastName')?.value.trim();
-
-    const phone =
-      element('profilePhone')?.value.trim() || '';
-
-    const newEmail =
-      element('profileEmail')?.value.trim();
+    const firstName = element('profileFirstName')?.value.trim();
+    const lastName = element('profileLastName')?.value.trim();
+    const phone = element('profilePhone')?.value.trim() || '';
+    const newEmail = element('profileEmail')?.value.trim();
 
     if (message) message.textContent = '';
 
@@ -1208,19 +1071,14 @@ element('personalDetailsForm')?.addEventListener(
         message.textContent =
           'Please enter your first name, surname and email address.';
       }
-
       return;
     }
 
-    if (
-      firstName.length > 80 ||
-      lastName.length > 80
-    ) {
+    if (firstName.length > 80 || lastName.length > 80) {
       if (message) {
         message.textContent =
           'Your first name and surname must each be no longer than 80 characters.';
       }
-
       return;
     }
 
@@ -1229,29 +1087,21 @@ element('personalDetailsForm')?.addEventListener(
         message.textContent =
           'Your phone number must be no longer than 30 characters.';
       }
-
       return;
     }
 
     if (button) button.disabled = true;
-
-    if (message) {
-      message.textContent = 'Saving your details…';
-    }
+    if (message) message.textContent = 'Saving your details…';
 
     try {
-      const {
-        data: userData,
-        error: userError
-      } = await supabaseClient.auth.getUser();
+      const { data: userData, error: userError } =
+        await supabaseClient.auth.getUser();
 
       if (userError) throw userError;
 
       const user = userData.user;
 
-      if (!user) {
-        throw new Error('Please sign in again.');
-      }
+      if (!user) throw new Error('Please sign in again.');
 
       const { error: detailsError } =
         await supabaseClient.auth.updateUser({
@@ -1279,21 +1129,15 @@ element('personalDetailsForm')?.addEventListener(
           message.textContent =
             'Your personal details have been saved. Please check your email for confirmation instructions to complete your email address change.';
         }
-
-      } else {
-        if (message) {
-          message.textContent =
-            'Your personal details have been saved successfully.';
-        }
+      } else if (message) {
+        message.textContent =
+          'Your personal details have been saved successfully.';
       }
 
       await refreshAccount();
 
     } catch (error) {
-      console.error(
-        'Could not update personal details:',
-        error
-      );
+      console.error('Could not update personal details:', error);
 
       if (message) {
         message.textContent =
@@ -1319,9 +1163,7 @@ element('changePasswordForm')?.addEventListener(
     const button = element('changePasswordButton');
     const message = element('changePasswordMessage');
 
-    const password =
-      element('newAccountPassword')?.value || '';
-
+    const password = element('newAccountPassword')?.value || '';
     const confirmation =
       element('confirmNewAccountPassword')?.value || '';
 
@@ -1332,37 +1174,29 @@ element('changePasswordForm')?.addEventListener(
         message.textContent =
           'Your new password must contain at least 8 characters.';
       }
-
       return;
     }
 
     if (password !== confirmation) {
       if (message) {
-        message.textContent =
-          'Your new passwords do not match.';
+        message.textContent = 'Your new passwords do not match.';
       }
-
       return;
     }
 
     if (button) button.disabled = true;
-
-    if (message) {
-      message.textContent = 'Updating your password…';
-    }
+    if (message) message.textContent = 'Updating your password…';
 
     try {
-      const { data } =
-        await supabaseClient.auth.getSession();
+      const { data } = await supabaseClient.auth.getSession();
 
       if (!data.session) {
         throw new Error('Please sign in again.');
       }
 
-      const { error } =
-        await supabaseClient.auth.updateUser({
-          password
-        });
+      const { error } = await supabaseClient.auth.updateUser({
+        password
+      });
 
       if (error) throw error;
 
@@ -1374,10 +1208,7 @@ element('changePasswordForm')?.addEventListener(
       }
 
     } catch (error) {
-      console.error(
-        'Could not update password:',
-        error
-      );
+      console.error('Could not update password:', error);
 
       if (message) {
         message.textContent =
@@ -1397,8 +1228,7 @@ element('changePasswordForm')?.addEventListener(
 
 async function refreshAccount() {
   try {
-    const { data, error } =
-      await supabaseClient.auth.getSession();
+    const { data, error } = await supabaseClient.auth.getSession();
 
     if (error) throw error;
 
@@ -1409,7 +1239,6 @@ async function refreshAccount() {
         loadMyHistory(),
         loadMyReferralDashboard(data.session.user)
       ]);
-
     } else {
       const history = element('entryHistory');
 
@@ -1423,10 +1252,7 @@ async function refreshAccount() {
     }
 
   } catch (error) {
-    console.error(
-      'Could not refresh account:',
-      error
-    );
+    console.error('Could not refresh account:', error);
 
     setText(
       'accountStatus',
@@ -1444,21 +1270,11 @@ element('accountForm')?.addEventListener(
   async (event) => {
     event.preventDefault();
 
-    const email =
-      element('accountEmail')?.value.trim();
-
-    const password =
-      element('accountPassword')?.value;
-
-    const firstName =
-      element('accountFirstName')?.value.trim();
-
-    const lastName =
-      element('accountLastName')?.value.trim();
-
-    const phone =
-      element('accountPhone')?.value.trim() || '';
-
+    const email = element('accountEmail')?.value.trim();
+    const password = element('accountPassword')?.value;
+    const firstName = element('accountFirstName')?.value.trim();
+    const lastName = element('accountLastName')?.value.trim();
+    const phone = element('accountPhone')?.value.trim() || '';
     const confirmPassword =
       element('accountConfirmPassword')?.value;
 
@@ -1470,27 +1286,21 @@ element('accountForm')?.addEventListener(
       showAccountMessage(
         'Enter your email address and password.'
       );
-
       return;
     }
 
     if (submit) submit.disabled = true;
-
     showAccountMessage('Please wait…');
 
     try {
       if (accountMode === 'signup') {
-
         if (!firstName || !lastName) {
           throw new Error(
             'Please enter your first name and surname.'
           );
         }
 
-        if (
-          firstName.length > 80 ||
-          lastName.length > 80
-        ) {
+        if (firstName.length > 80 || lastName.length > 80) {
           throw new Error(
             'Your first name and surname must each be no longer than 80 characters.'
           );
@@ -1509,9 +1319,7 @@ element('accountForm')?.addEventListener(
         }
 
         if (!confirmPassword) {
-          throw new Error(
-            'Please confirm your password.'
-          );
+          throw new Error('Please confirm your password.');
         }
 
         if (password !== confirmPassword) {
@@ -1520,12 +1328,8 @@ element('accountForm')?.addEventListener(
           );
         }
 
-        // Read the referral code captured when this browser
-        // opened a personal referral link.
         const pendingReferralCode =
-          sessionStorage.getItem(
-            PENDING_REFERRAL_STORAGE_KEY
-          );
+          sessionStorage.getItem(PENDING_REFERRAL_STORAGE_KEY);
 
         const signupMetadata = {
           first_name: firstName,
@@ -1537,8 +1341,7 @@ element('accountForm')?.addEventListener(
           pendingReferralCode &&
           /^PP-[A-Z0-9]{12}$/.test(pendingReferralCode)
         ) {
-          signupMetadata.referral_code =
-            pendingReferralCode;
+          signupMetadata.referral_code = pendingReferralCode;
         }
 
         const { data, error } =
@@ -1553,9 +1356,6 @@ element('accountForm')?.addEventListener(
 
         if (error) throw error;
 
-        // The database registration trigger has already
-        // processed the metadata when the user is created.
-        // Remove the temporary code only after signup succeeds.
         sessionStorage.removeItem(
           PENDING_REFERRAL_STORAGE_KEY
         );
@@ -1566,7 +1366,6 @@ element('accountForm')?.addEventListener(
           );
 
           await refreshAccount();
-
           finishSuccessfulAuthentication();
 
         } else {
@@ -1584,7 +1383,6 @@ element('accountForm')?.addEventListener(
         }
 
       } else {
-
         const { error } =
           await supabaseClient.auth.signInWithPassword({
             email,
@@ -1593,29 +1391,20 @@ element('accountForm')?.addEventListener(
 
         if (error) throw error;
 
-        showAccountMessage(
-          'Signed in successfully.'
-        );
-
+        showAccountMessage('Signed in successfully.');
         await refreshAccount();
-
         finishSuccessfulAuthentication();
       }
 
     } catch (error) {
-      console.error(
-        'Account registration or sign-in failed:',
-        error
-      );
+      console.error('Account registration or sign-in failed:', error);
 
       showAccountMessage(
-        error.message ||
-        'Could not complete the request.'
+        error.message || 'Could not complete the request.'
       );
 
     } finally {
-      const { data } =
-        await supabaseClient.auth.getSession();
+      const { data } = await supabaseClient.auth.getSession();
 
       if (submit) {
         submit.disabled = Boolean(data.session);
@@ -1631,29 +1420,21 @@ element('accountForm')?.addEventListener(
 async function signOutAccount(reason = 'manual') {
   stopIdleLogout();
 
-  const { error } =
-    await supabaseClient.auth.signOut();
+  const { error } = await supabaseClient.auth.signOut();
 
   if (error) {
-    showAccountMessage(
-      'Could not sign out. Please try again.'
-    );
-
+    showAccountMessage('Could not sign out. Please try again.');
     return;
   }
 
   localStorage.removeItem(ACTIVITY_STORAGE_KEY);
+  sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
 
   accountMode = 'signin';
-
   element('accountForm')?.reset();
 
   setText('accountTitle', 'Sign in');
-
-  setText(
-    'accountModeButton',
-    'Need an account? Register'
-  );
+  setText('accountModeButton', 'Need an account? Register');
 
   const submit = document.querySelector(
     '#accountForm button[type="submit"]'
@@ -1673,7 +1454,6 @@ async function signOutAccount(reason = 'manual') {
   }
 
   updateAccountInterface(null);
-
   clearReferralDashboard();
 
   showAccountMessage(
@@ -1695,7 +1475,7 @@ async function signOutAccount(reason = 'manual') {
 }
 
 /* =========================================================
-   ACCOUNT HISTORY — LOAD AND CLEAR HISTORY
+   ACCOUNT HISTORY
    ========================================================= */
 
 async function loadMyHistory() {
@@ -1705,9 +1485,7 @@ async function loadMyHistory() {
 
   const requestNumber = ++historyRequestNumber;
 
-  history.replaceChildren(
-    makeParagraph('Loading your history…')
-  );
+  history.replaceChildren(makeParagraph('Loading your history…'));
 
   try {
     const result = await callEdgeFunction(
@@ -1717,10 +1495,7 @@ async function loadMyHistory() {
 
     if (requestNumber !== historyRequestNumber) return;
 
-    if (
-      !result.ok ||
-      !Array.isArray(result.items)
-    ) {
+    if (!result.ok || !Array.isArray(result.items)) {
       throw new Error(
         'The account history service is not ready yet.'
       );
@@ -1734,7 +1509,6 @@ async function loadMyHistory() {
           'No challenge attempts or competition entries were found for your account.'
         )
       );
-
       return;
     }
 
@@ -1743,26 +1517,20 @@ async function loadMyHistory() {
       card.className = 'history-card';
 
       const title = document.createElement('h3');
-
-      title.textContent =
-        item.competition_name || 'Competition';
+      title.textContent = item.competition_name || 'Competition';
 
       const kind = document.createElement('p');
-
       kind.textContent =
         item.record_type === 'entry'
           ? 'Competition entry'
           : 'Skill challenge';
 
       const status = document.createElement('p');
-
       status.textContent =
         `Status: ${item.status || 'Unavailable'}`;
 
       const date = document.createElement('p');
-
-      date.textContent =
-        `Date: ${formatDate(item.created_at)}`;
+      date.textContent = `Date: ${formatDate(item.created_at)}`;
 
       card.append(title, kind, status, date);
 
@@ -1772,23 +1540,36 @@ async function loadMyHistory() {
         card.appendChild(number);
       }
 
-      // Only actual competition entries can launch the ten-task game.
       const entryId = item.entry_id || item.id;
       const isEntry = item.record_type === 'entry';
       const entryStatus = String(item.status || '').toLowerCase();
-      const isEligibleEntry = isEntry && entryId &&
-        (entryStatus === 'paid' || entryStatus === 'completed' ||
-         entryStatus === 'success' || item.entry_type === 'referral' ||
-         item.payment_status === 'paid');
+
+      const isEligibleEntry =
+        isEntry &&
+        entryId &&
+        (
+          entryStatus === 'paid' ||
+          entryStatus === 'completed' ||
+          entryStatus === 'success' ||
+          item.entry_type === 'referral' ||
+          item.payment_status === 'paid'
+        );
 
       if (isEligibleEntry) {
         const playButton = document.createElement('button');
+
         playButton.type = 'button';
         playButton.className = 'cta';
         playButton.textContent = 'Play competition';
+
         playButton.addEventListener('click', () => {
-          startCompetitionGame(String(entryId), item.competition_name || 'Competition');
+          startCompetitionGame(
+            String(entryId),
+            item.competition_name || 'Competition',
+            'entry'
+          );
         });
+
         card.appendChild(playButton);
       }
 
@@ -1812,34 +1593,21 @@ async function loadMyHistory() {
 }
 
 /* =========================================================
-   CLEAR HISTORY — CONFIRMATION POP-UP
+   CLEAR HISTORY
    ========================================================= */
 
 function openClearHistoryModal() {
-  const modal = element('clearHistoryModal');
-  const message = element('clearHistoryMessage');
+  const historyModal = element('clearHistoryModal');
 
-  if (!modal) return;
+  if (!historyModal) return;
 
-  if (message) {
-    message.textContent = '';
-  }
-
-  modal.classList.remove('hidden');
+  setText('clearHistoryMessage', '');
+  historyModal.classList.remove('hidden');
 }
 
 function closeClearHistoryModal() {
-  const modal = element('clearHistoryModal');
-
-  if (modal) {
-    modal.classList.add('hidden');
-  }
-
-  const message = element('clearHistoryMessage');
-
-  if (message) {
-    message.textContent = '';
-  }
+  element('clearHistoryModal')?.classList.add('hidden');
+  setText('clearHistoryMessage', '');
 }
 
 async function confirmClearHistory() {
@@ -1864,13 +1632,11 @@ async function confirmClearHistory() {
 
     if (!result.ok) {
       throw new Error(
-        result.error ||
-        'Could not clear your history.'
+        result.error || 'Could not clear your history.'
       );
     }
 
     closeClearHistoryModal();
-
     await loadMyHistory();
 
     setText(
@@ -1879,10 +1645,7 @@ async function confirmClearHistory() {
     );
 
   } catch (error) {
-    console.error(
-      'Could not clear account history:',
-      error
-    );
+    console.error('Could not clear account history:', error);
 
     if (message) {
       message.textContent =
@@ -1931,65 +1694,139 @@ document.addEventListener('keydown', (event) => {
    ========================================================= */
 
 const GAME_OBJECT_ICONS = {
-  sneaker: '👟', shoe: '👟', cap: '🧢', ball: '⚽', watch: '⌚',
-  bag: '👜', sunglasses: '🕶️', hat: '🎩', backpack: '🎒'
+  sneaker: '👟',
+  shoe: '👟',
+  cap: '🧢',
+  ball: '⚽',
+  watch: '⌚',
+  bag: '👜',
+  sunglasses: '🕶️',
+  hat: '🎩',
+  backpack: '🎒'
 };
 
 const GAME_COLOUR_NAMES = {
-  red: 'Red', blue: 'Blue', green: 'Green', yellow: 'Yellow'
+  red: 'Red',
+  blue: 'Blue',
+  green: 'Green',
+  yellow: 'Yellow'
 };
 
-function gameElement(id) { return document.getElementById(id); }
+function gameElement(id) {
+  return document.getElementById(id);
+}
 
 function setGameStatus(message) {
   const node = gameElement('gameStatus');
   if (node) node.textContent = message;
 }
 
+function clearGameCountdown() {
+  if (gameCountdownInterval) {
+    clearInterval(gameCountdownInterval);
+    gameCountdownInterval = null;
+  }
+}
+
 function closeCompetitionGame() {
   gameElement('competitionGame')?.classList.add('hidden');
+
+  clearGameCountdown();
+
   gameSubmitting = false;
+  gamePaymentBusy = false;
+
   activeGameAttempt = null;
   activeGameTasks = [];
   activeGameCompletedTaskIds = [];
   activeGameEntryId = null;
+  activeGameCompetitionId = null;
+  activeGameNeedsPayment = false;
+
   loadMyHistory();
 }
 
 function normaliseOptions(options) {
   if (!Array.isArray(options)) return [];
+
   return options.map((option, index) => {
-    if (typeof option === 'string' || typeof option === 'number') {
-      return { key: ['A','B','C','D'][index], label: String(option) };
+    if (
+      typeof option === 'string' ||
+      typeof option === 'number'
+    ) {
+      return {
+        key: ['A', 'B', 'C', 'D'][index],
+        label: String(option)
+      };
     }
-    const key = String(option.key || option.answer_key || option.id || option.label || ['A','B','C','D'][index]).toUpperCase();
-    const label = String(option.text ?? option.value ?? option.answer ?? option.label ?? option.key ?? '');
+
+    const key = String(
+      option.key ||
+      option.answer_key ||
+      option.id ||
+      option.label ||
+      ['A', 'B', 'C', 'D'][index]
+    ).toUpperCase();
+
+    const label = String(
+      option.text ??
+      option.value ??
+      option.answer ??
+      option.label ??
+      option.key ??
+      ''
+    );
+
     return { key, label };
   }).filter(option => option.key && option.label);
 }
 
 function renderGameGrid(grid) {
   const host = gameElement('gameObjectGrid');
-  host.replaceChildren();
-  if (!Array.isArray(grid) || !grid.length) {
-    host.appendChild(makeParagraph('This task has no visual board data. Please contact support before continuing.'));
+
+  if (!host) {
+    setGameStatus('The game board is unavailable. Please contact support.');
     return false;
   }
+
+  host.replaceChildren();
+
+  if (!Array.isArray(grid) || !grid.length) {
+    host.appendChild(
+      makeParagraph(
+        'This task has no visual board data. Please contact support before continuing.'
+      )
+    );
+    return false;
+  }
+
   grid.forEach((item) => {
     const tile = document.createElement('div');
     tile.className = 'game-object-tile';
-    const colour = String(item.colour || item.color || 'grey').toLowerCase();
-    const object = String(item.object || 'item').toLowerCase();
+
+    const colour = String(
+      item.colour || item.color || 'grey'
+    ).toLowerCase();
+
+    const object = String(
+      item.object || 'item'
+    ).toLowerCase();
+
     const icon = document.createElement('span');
     icon.className = 'game-object-icon';
     icon.textContent = GAME_OBJECT_ICONS[object] || '◆';
+
     const caption = document.createElement('span');
     caption.className = 'game-object-caption';
-    caption.textContent = `${GAME_COLOUR_NAMES[colour] || colour} ${object}`;
+
+    caption.textContent =
+      `${GAME_COLOUR_NAMES[colour] || colour} ${object}`;
+
     tile.dataset.colour = colour;
     tile.append(icon, caption);
     host.appendChild(tile);
   });
+
   return true;
 }
 
@@ -1999,144 +1836,133 @@ function currentUnansweredTask() {
   );
 }
 
+function showGamePaymentPanel() {
+  setHidden('gameTaskCard', true);
+  setHidden('gameCompletePanel', false);
+  setHidden('gamePaymentPanel', !activeGameNeedsPayment);
+
+  setText(
+    'gameProgressText',
+    '10 of 10 complete'
+  );
+
+  const progressBar = gameElement('gameProgressBar');
+  if (progressBar) progressBar.style.width = '100%';
+
+  setText(
+    'gameFinalSummary',
+    'All ten answers have been saved. Your score and answers will remain hidden while the competition is in progress.'
+  );
+
+  if (activeGameNeedsPayment) {
+    setGameStatus(
+      'Your challenge is complete. Complete payment within the time shown to confirm this entry.'
+    );
+
+    startPaymentCountdown();
+
+  } else {
+    setHidden('gamePaymentPanel', true);
+
+    setGameStatus(
+      'This entry is already paid. Your saved result is ready for competition review.'
+    );
+  }
+}
+
 function renderCurrentGameTask() {
   const task = currentUnansweredTask();
+
   const completedCount = activeGameCompletedTaskIds.length;
   const progress = Math.min(100, completedCount * 10);
-  gameElement('gameProgressText').textContent = `Task ${Math.min(completedCount + 1, 10)} of 10`;
-  gameElement('gameProgressBar').style.width = `${progress}%`;
-  gameElement('gameTaskCard').classList.toggle('hidden', !task);
-  gameElement('gameCompletePanel').classList.add('hidden');
+
+  setText(
+    'gameProgressText',
+    `Task ${Math.min(completedCount + 1, 10)} of 10`
+  );
+
+  const progressBar = gameElement('gameProgressBar');
+  if (progressBar) progressBar.style.width = `${progress}%`;
+
   if (!task) {
-    gameElement('gameProgressText').textContent = '10 of 10 complete';
-    gameElement('gameProgressBar').style.width = '100%';
-    gameElement('gameTaskCard').classList.add('hidden');
-    gameElement('gameCompletePanel').classList.remove('hidden');
-    const savedScore = Number(activeGameAttempt?.total_score || 0);
-    const savedCorrect = Number(activeGameAttempt?.correct_answers || 0);
-    gameElement('gameFinalSummary').textContent = `Your saved result: ${savedScore} points. Correct answers: ${savedCorrect} out of 10.`;
-    setGameStatus('This entry has already completed all ten tasks.');
+    showGamePaymentPanel();
     return;
   }
+
+  setHidden('gameTaskCard', false);
+  setHidden('gameCompletePanel', true);
+  setHidden('gamePaymentPanel', true);
+
   const data = task.puzzle_data || {};
-  gameElement('gameTaskNumber').textContent = `TASK ${task.task_number || completedCount + 1}`;
-  gameElement('gameInstruction').textContent = task.instruction || data.question || 'Study the objects and choose the correct answer.';
-  gameElement('gameScoreText').textContent = `${Number(activeGameAttempt?.total_score || 0)} points`;
-  gameElement('gameAnswerFeedback').textContent = '';
+
+  setText(
+    'gameTaskNumber',
+    `TASK ${task.task_number || completedCount + 1}`
+  );
+
+  setText(
+    'gameInstruction',
+    task.instruction ||
+    data.question ||
+    'Study the objects and choose the correct answer.'
+  );
+
+  // Deliberately do not display scores or correctness.
+  setText('gameAnswerFeedback', '');
+
   if (!renderGameGrid(data.grid)) {
-    setGameStatus('This task could not be displayed safely. Please contact support.');
+    setGameStatus(
+      'This task could not be displayed safely. Please contact support.'
+    );
     return;
   }
+
   const optionsHost = gameElement('gameAnswerOptions');
-  optionsHost.replaceChildren();
-  const options = normaliseOptions(data.options);
-  if (options.length !== 4) {
-    setGameStatus('This task does not contain four valid answer choices. Please contact support.');
+
+  if (!optionsHost) {
+    setGameStatus('The answer choices are unavailable.');
     return;
   }
-  options.forEach(option => {
+
+  optionsHost.replaceChildren();
+
+  const options = normaliseOptions(data.options);
+
+  if (options.length !== 4) {
+    setGameStatus(
+      'This task does not contain four valid answer choices. Please contact support.'
+    );
+    return;
+  }
+
+  options.forEach((option) => {
     const button = document.createElement('button');
+
     button.type = 'button';
     button.className = 'game-answer-button';
     button.textContent = `${option.key}. ${option.label}`;
-    button.addEventListener('click', () => submitGameAnswer(task, option.key, button));
+
+    button.addEventListener('click', () => {
+      submitGameAnswer(task, option.key, button);
+    });
+
     optionsHost.appendChild(button);
   });
-  setGameStatus('Choose carefully. You can answer this task only once.');
-}
 
-async function startCompetitionGame(entryId, competitionName) {
-  const { data, error } = await supabaseClient.auth.getSession();
-  if (error || !data.session) {
-    openAccount();
-    showAccountMessage('Please sign in to play your competition entry.');
-    return;
-  }
-  activeGameEntryId = entryId;
-  gameElement('competitionGame').classList.remove('hidden');
-  gameElement('gameCompetitionTitle').textContent = competitionName;
-  gameElement('gameTaskCard').classList.add('hidden');
-  gameElement('gameCompletePanel').classList.add('hidden');
-  setGameStatus('Loading your saved competition attempt…');
-  try {
-    const result = await callEdgeFunction(START_COMPETITION_ATTEMPT_URL, { entry_id: entryId });
-    if (result.ok === false || !result.attempt || !Array.isArray(result.tasks) || result.tasks.length !== 10) {
-      throw new Error(result.error || 'The competition did not return all ten tasks.');
-    }
-    activeGameAttempt = result.attempt;
-    activeGameTasks = result.tasks;
-    activeGameCompletedTaskIds = Array.isArray(result.completed_task_ids) ? result.completed_task_ids : [];
-    gameElement('gameScoreText').textContent = `${Number(activeGameAttempt.total_score || 0)} points`;
-    renderCurrentGameTask();
-  } catch (error) {
-    console.error('Could not start competition attempt:', error);
-    setGameStatus(error.message || 'Could not start this competition. Please try again.');
-  }
-}
-
-async function submitGameAnswer(task, answerKey, clickedButton) {
-  if (gameSubmitting || activeGameCompletedTaskIds.includes(task.id)) return;
-  gameSubmitting = true;
-  const buttons = [...gameElement('gameAnswerOptions').querySelectorAll('button')];
-  buttons.forEach(button => button.disabled = true);
-  clickedButton.textContent += ' — submitting…';
-  setGameStatus('Saving your answer…');
-  try {
-    const result = await callEdgeFunction(SUBMIT_COMPETITION_ANSWER_URL, {
-      attempt_id: activeGameAttempt.id,
-      task_id: task.id,
-      selected_answer_key: answerKey
-    });
-    if (result.ok === false || result.error) throw new Error(result.error || 'Your answer was not saved.');
-    activeGameCompletedTaskIds.push(task.id);
-    activeGameAttempt.total_score = result.total_score ?? activeGameAttempt.total_score;
-    activeGameAttempt.correct_answers = result.correct_answers ?? activeGameAttempt.correct_answers;
-    gameElement('gameScoreText').textContent = `${Number(activeGameAttempt.total_score || 0)} points`;
-    gameElement('gameAnswerFeedback').textContent = result.correct ? `Correct — ${result.points_awarded || result.points || 0} points awarded.` : 'Answer recorded — no points for this task.';
-    if (result.completed || result.status === 'submitted' || activeGameCompletedTaskIds.length === 10) {
-      gameElement('gameProgressText').textContent = '10 of 10 complete';
-      gameElement('gameProgressBar').style.width = '100%';
-      gameElement('gameTaskCard').classList.add('hidden');
-      gameElement('gameCompletePanel').classList.remove('hidden');
-      const score = Number(result.total_score ?? activeGameAttempt.total_score ?? 0);
-      const correct = Number(result.correct_answers ?? activeGameAttempt.correct_answers ?? 0);
-      gameElement('gameFinalSummary').textContent = `Your score: ${score} points. Correct answers: ${correct} out of 10.`;
-      setGameStatus('All ten answers have been submitted and your result is saved.');
-    } else {
-      renderCurrentGameTask();
-    }
-  } catch (error) {
-    console.error('Could not submit competition answer:', error);
-    setGameStatus(error.message || 'Your answer could not be saved. Please try again.');
-    buttons.forEach(button => button.disabled = false);
-  } finally {
-    gameSubmitting = false;
-  }
+  setGameStatus(
+    'Choose carefully. You can answer this task only once.'
+  );
 }
 
 /* =========================================================
-   SKILL CHALLENGE AND CHECKOUT
+   START OR RESUME A GAME
    ========================================================= */
 
-function setChallengeBusy(busy) {
-  challengeBusy = busy;
-
-  const button = element('submitChallengeButton');
-
-  if (button) button.disabled = busy;
-}
-
-async function openChallenge(
-  competitionId,
-  competitionName = 'Competition'
+async function startCompetitionGame(
+  id,
+  competitionName = 'Competition',
+  mode = 'entry'
 ) {
-  selectedCompetitionId = competitionId;
-
-  selectedCompetitionName =
-    competitionName || 'Competition';
-
-  activeChallengeId = null;
-
   const { data, error } =
     await supabaseClient.auth.getSession();
 
@@ -2144,173 +1970,344 @@ async function openChallenge(
     openAccount();
 
     showAccountMessage(
-      'Please sign in or register before starting a skill challenge.'
+      'Please sign in to play your competition entry.'
     );
 
     return;
   }
 
-  setText(
-    'challengeTitle',
-    `Skill challenge: ${selectedCompetitionName}`
-  );
+  clearGameCountdown();
 
-  setChallengeMessage(
-    'Preparing your challenge…'
-  );
+  activeGameEntryId = null;
+  activeGameCompetitionId = null;
+  activeGameAttempt = null;
+  activeGameTasks = [];
+  activeGameCompletedTaskIds = [];
 
-  if (element('x')) element('x').value = '';
-  if (element('y')) element('y').value = '';
+  activeGameNeedsPayment = mode === 'competition';
 
-  if (modal) modal.classList.remove('hidden');
+  gameElement('competitionGame')?.classList.remove('hidden');
 
-  const target = document.querySelector(
-    '#board .target'
-  );
+  setText('gameCompetitionTitle', competitionName);
 
-  if (target) {
-    target.style.left = '50%';
-    target.style.top = '50%';
+  setHidden('gameTaskCard', true);
+  setHidden('gameCompletePanel', true);
+  setHidden('gamePaymentPanel', true);
 
-    target.style.transform =
-      'translate(-50%, -50%)';
-  }
+  setGameStatus('Loading your saved competition attempt…');
 
   try {
-    setChallengeBusy(true);
+    const requestBody =
+      mode === 'competition'
+        ? { competition_id: id }
+        : { entry_id: id };
 
     const result = await callEdgeFunction(
-      VERIFY_CHALLENGE_URL,
-      {
-        action: 'create',
-        competition_id: selectedCompetitionId
-      }
+      START_COMPETITION_ATTEMPT_URL,
+      requestBody
     );
 
-    const challenge =
-      result.challenge || result;
-
     if (
-      !challenge.id ||
-      !Number.isInteger(challenge.target_x) ||
-      !Number.isInteger(challenge.target_y)
+      result.ok === false ||
+      !result.attempt ||
+      !result.entry ||
+      !Array.isArray(result.tasks) ||
+      result.tasks.length !== 10
     ) {
       throw new Error(
-        'The challenge service returned an invalid challenge.'
+        result.error ||
+        'The competition did not return all ten tasks.'
       );
     }
 
-    activeChallengeId = challenge.id;
+    activeGameEntryId = String(result.entry.id);
+    activeGameCompetitionId =
+      mode === 'competition' ? String(id) : null;
 
-    if (target) {
-      target.style.left =
-        `${challenge.target_x}%`;
+    activeGameAttempt = result.attempt;
+    activeGameTasks = result.tasks;
 
-      target.style.top =
-        `${challenge.target_y}%`;
+    activeGameCompletedTaskIds =
+      Array.isArray(result.completed_task_ids)
+        ? result.completed_task_ids
+        : [];
 
-      target.style.transform =
-        'translate(-50%, -50%)';
+    // A submitted attempt has finished the game and must proceed
+    // to payment, not display the tasks again.
+    if (
+      activeGameAttempt.status === 'submitted' ||
+      activeGameCompletedTaskIds.length === 10
+    ) {
+      if (mode === 'competition') {
+        activeGameNeedsPayment = true;
+      } else {
+        activeGameNeedsPayment = false;
+      }
+
+      showGamePaymentPanel();
+      return;
     }
 
-    setChallengeMessage(
-      'Prototype challenge: the target is currently visible. Do not use this as a production skill test or enable real payments.'
-    );
+    if (activeGameAttempt.status !== 'in_progress') {
+      throw new Error(
+        'This attempt is no longer available. Please refresh your history.'
+      );
+    }
+
+    setHidden('gamePaymentPanel', true);
+    renderCurrentGameTask();
 
   } catch (error) {
-    console.error(
-      'Could not create challenge:',
-      error
-    );
+    console.error('Could not start competition attempt:', error);
 
-    setText(
-      'challengeTitle',
-      'Could not start challenge'
+    setGameStatus(
+      error.message ||
+      'Could not start this competition. Please try again.'
     );
-
-    setChallengeMessage(
-      error.message || 'Please try again.'
-    );
-
-  } finally {
-    setChallengeBusy(false);
   }
 }
 
-function closeChallenge() {
-  if (modal) modal.classList.add('hidden');
+/* =========================================================
+   SUBMIT ONE ANSWER
+   ========================================================= */
 
-  activeChallengeId = null;
-  challengeBusy = false;
-}
-
-async function submitEntry() {
-  if (challengeBusy) return;
-
-  const xInput = element('x');
-  const yInput = element('y');
-
-  const x = Number(xInput?.value);
-  const y = Number(yInput?.value);
-
-  if (!activeChallengeId || !selectedCompetitionId) {
-    setChallengeMessage(
-      'Please start a new challenge first.'
-    );
-
-    return;
-  }
-
+async function submitGameAnswer(task, answerKey, clickedButton) {
   if (
-    !xInput?.value.trim() ||
-    !yInput?.value.trim() ||
-    !Number.isInteger(x) ||
-    !Number.isInteger(y) ||
-    x < 0 || x > 100 ||
-    y < 0 || y > 100
+    gameSubmitting ||
+    !activeGameAttempt ||
+    activeGameCompletedTaskIds.includes(task.id)
   ) {
-    setChallengeMessage(
-      'Choose whole-number X and Y coordinates from 0 to 100.'
-    );
-
     return;
   }
+
+  gameSubmitting = true;
+
+  const optionsHost = gameElement('gameAnswerOptions');
+
+  const buttons = optionsHost
+    ? [...optionsHost.querySelectorAll('button')]
+    : [];
+
+  buttons.forEach(button => {
+    button.disabled = true;
+  });
+
+  if (clickedButton) {
+    clickedButton.textContent += ' — submitting…';
+  }
+
+  setGameStatus('Saving your answer…');
 
   try {
-    setChallengeBusy(true);
-
-    setChallengeMessage(
-      'Checking your answer…'
-    );
-
-    const verification = await callEdgeFunction(
-      VERIFY_CHALLENGE_URL,
+    const result = await callEdgeFunction(
+      SUBMIT_COMPETITION_ANSWER_URL,
       {
-        action: 'verify',
-        challenge_id: activeChallengeId,
-        x,
-        y
+        attempt_id: activeGameAttempt.id,
+        task_id: task.id,
+        selected_answer_key: answerKey
       }
     );
 
-    if (!verification.solved) {
-      setChallengeMessage(
-        verification.message ||
-        'That answer was not accepted. Please try again.'
+    if (result.ok === false || result.error) {
+      throw new Error(
+        result.error || 'Your answer was not saved.'
+      );
+    }
+
+    if (!activeGameCompletedTaskIds.includes(task.id)) {
+      activeGameCompletedTaskIds.push(task.id);
+    }
+
+    // Do not read or display correctness, points or score.
+    if (
+      result.completed ||
+      activeGameCompletedTaskIds.length === 10
+    ) {
+      setGameStatus(
+        'All ten answers have been submitted. Loading your payment details…'
+      );
+
+      if (activeGameCompetitionId) {
+        // Ask the server for the saved submitted attempt and
+        // its authoritative payment expiry time.
+        const refreshed = await callEdgeFunction(
+          START_COMPETITION_ATTEMPT_URL,
+          {
+            competition_id: activeGameCompetitionId
+          }
+        );
+
+        if (
+          !refreshed.attempt ||
+          refreshed.attempt.status !== 'submitted'
+        ) {
+          throw new Error(
+            'Your answers were saved, but the payment details could not be loaded. Please reopen this competition from the competitions page.'
+          );
+        }
+
+        activeGameAttempt = refreshed.attempt;
+        activeGameEntryId = String(refreshed.entry.id);
+        activeGameCompletedTaskIds =
+          Array.isArray(refreshed.completed_task_ids)
+            ? refreshed.completed_task_ids
+            : activeGameCompletedTaskIds;
+
+        activeGameNeedsPayment = true;
+
+      } else {
+        activeGameNeedsPayment = false;
+        activeGameAttempt.status = 'submitted';
+      }
+
+      showGamePaymentPanel();
+
+    } else {
+      renderCurrentGameTask();
+    }
+
+  } catch (error) {
+    console.error('Could not submit competition answer:', error);
+
+    setGameStatus(
+      error.message ||
+      'Your answer could not be saved. Please try again.'
+    );
+
+    buttons.forEach(button => {
+      button.disabled = false;
+    });
+
+  } finally {
+    gameSubmitting = false;
+  }
+}
+
+/* =========================================================
+   PAYMENT COUNTDOWN
+   ========================================================= */
+
+function startPaymentCountdown() {
+  clearGameCountdown();
+
+  const timerNode = gameElement('gamePaymentTimerText');
+
+  if (!activeGameAttempt?.payment_expires_at) {
+    if (timerNode) {
+      timerNode.textContent =
+        'Payment deadline could not be loaded. Please reopen the competition.';
+    }
+
+    const payButton = gameElement('gamePayButton');
+    if (payButton) payButton.disabled = true;
+
+    return;
+  }
+
+  const deadline = new Date(
+    activeGameAttempt.payment_expires_at
+  ).getTime();
+
+  if (!Number.isFinite(deadline)) {
+    if (timerNode) {
+      timerNode.textContent =
+        'Payment deadline unavailable.';
+    }
+
+    return;
+  }
+
+  function updateCountdown() {
+    const remaining = deadline - Date.now();
+
+    if (remaining <= 0) {
+      if (timerNode) {
+        timerNode.textContent =
+          'Your payment window has expired.';
+      }
+
+      const payButton = gameElement('gamePayButton');
+      if (payButton) payButton.disabled = true;
+
+      clearGameCountdown();
+
+      setGameStatus(
+        'The payment period has expired. This attempt cannot be used as a competition entry.'
       );
 
       return;
     }
 
-    setChallengeMessage(
-      'Challenge solved. Preparing Sandbox checkout…'
-    );
+    const totalSeconds = Math.floor(remaining / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
 
+    if (timerNode) {
+      timerNode.textContent =
+        `Time remaining to pay: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    const payButton = gameElement('gamePayButton');
+    if (payButton) payButton.disabled = gamePaymentBusy;
+  }
+
+  updateCountdown();
+
+  gameCountdownInterval = setInterval(
+    updateCountdown,
+    1000
+  );
+}
+
+/* =========================================================
+   CREATE PAYFAST CHECKOUT FOR THIS SAVED ATTEMPT
+   ========================================================= */
+
+async function beginGamePayment() {
+  if (gamePaymentBusy) return;
+
+  if (!activeGameEntryId || !activeGameAttempt?.id) {
+    setGameStatus(
+      'Your saved entry details are missing. Please reopen the competition.'
+    );
+    return;
+  }
+
+  if (!activeGameNeedsPayment) {
+    setGameStatus(
+      'This entry does not require another payment.'
+    );
+    return;
+  }
+
+  const deadline = new Date(
+    activeGameAttempt.payment_expires_at || ''
+  ).getTime();
+
+  if (!Number.isFinite(deadline) || deadline <= Date.now()) {
+    setGameStatus(
+      'Your payment window has expired. This attempt cannot be paid.'
+    );
+    return;
+  }
+
+  gamePaymentBusy = true;
+
+  const payButton = gameElement('gamePayButton');
+
+  if (payButton) {
+    payButton.disabled = true;
+    payButton.textContent = 'Preparing secure checkout…';
+  }
+
+  setGameStatus('Preparing your PayFast Sandbox checkout…');
+
+  try {
     const orderResult = await callEdgeFunction(
       CREATE_PAYMENT_ORDER_URL,
       {
-        competition_id: selectedCompetitionId,
-        challenge_id: activeChallengeId
+        entry_id: activeGameEntryId,
+        attempt_id: activeGameAttempt.id
       }
     );
 
@@ -2345,16 +2342,132 @@ async function submitEntry() {
     );
 
     document.body.appendChild(form);
+
+    // Do not let inactivity logout interrupt the PayFast redirect.
+    sessionStorage.setItem(CHECKOUT_STORAGE_KEY, 'true');
+
     form.submit();
 
   } catch (error) {
-    console.error(
-      'Challenge or checkout failed:',
-      error
+    console.error('Could not create PayFast checkout:', error);
+
+    setGameStatus(
+      `${error.message || 'Could not prepare checkout.'} Your payment has not been confirmed.`
     );
 
+    gamePaymentBusy = false;
+
+    if (payButton) {
+      payButton.disabled = false;
+      payButton.textContent = 'Pay entry fee';
+    }
+  }
+}
+
+/* =========================================================
+   GAME BUTTONS
+   ========================================================= */
+
+gameElement('gamePayButton')
+  ?.addEventListener('click', beginGamePayment);
+
+gameElement('gameCloseButton')
+  ?.addEventListener('click', closeCompetitionGame);
+
+/* =========================================================
+   LEGACY X/Y CHALLENGE
+   ========================================================= */
+
+function setChallengeBusy(busy) {
+  challengeBusy = busy;
+
+  const button = element('submitChallengeButton');
+  if (button) button.disabled = busy;
+}
+
+async function openChallenge(
+  competitionId,
+  competitionName = 'Competition'
+) {
+  selectedCompetitionId = competitionId;
+  selectedCompetitionName = competitionName || 'Competition';
+  activeChallengeId = null;
+
+  const { data, error } =
+    await supabaseClient.auth.getSession();
+
+  if (error || !data.session) {
+    openAccount();
+
+    showAccountMessage(
+      'Please sign in or register before starting a skill challenge.'
+    );
+
+    return;
+  }
+
+  setText(
+    'challengeTitle',
+    `Skill challenge: ${selectedCompetitionName}`
+  );
+
+  setChallengeMessage('Preparing your challenge…');
+
+  if (element('x')) element('x').value = '';
+  if (element('y')) element('y').value = '';
+
+  modal?.classList.remove('hidden');
+
+  const target = document.querySelector('#board .target');
+
+  if (target) {
+    target.style.left = '50%';
+    target.style.top = '50%';
+    target.style.transform = 'translate(-50%, -50%)';
+  }
+
+  try {
+    setChallengeBusy(true);
+
+    const result = await callEdgeFunction(
+      VERIFY_CHALLENGE_URL,
+      {
+        action: 'create',
+        competition_id: selectedCompetitionId
+      }
+    );
+
+    const challenge = result.challenge || result;
+
+    if (
+      !challenge.id ||
+      !Number.isInteger(challenge.target_x) ||
+      !Number.isInteger(challenge.target_y)
+    ) {
+      throw new Error(
+        'The challenge service returned an invalid challenge.'
+      );
+    }
+
+    activeChallengeId = challenge.id;
+
+    if (target) {
+      target.style.left = `${challenge.target_x}%`;
+      target.style.top = `${challenge.target_y}%`;
+      target.style.transform = 'translate(-50%, -50%)';
+    }
+
     setChallengeMessage(
-      `${error.message || 'Something went wrong.'} Payment is not confirmed unless the server verifies it.`
+      'This older X/Y challenge is not used for the new paid competition flow. Please start the visual competition game instead.'
+    );
+
+  } catch (error) {
+    console.error('Could not create challenge:', error);
+
+    setText('challengeTitle', 'Could not start challenge');
+
+    setChallengeMessage(
+      error.message || 'Please try again.'
     );
 
   } finally {
@@ -2362,8 +2475,24 @@ async function submitEntry() {
   }
 }
 
+function closeChallenge() {
+  modal?.classList.add('hidden');
+  activeChallengeId = null;
+  challengeBusy = false;
+}
+
+/*
+ * The old X/Y checkout is deliberately disabled.
+ * Paid competition entries must use the ten-task game first.
+ */
+async function submitEntry() {
+  setChallengeMessage(
+    'The old X/Y checkout is no longer used. Please close this window and start the visual competition game.'
+  );
+}
+
 /* =========================================================
-   BOARD COORDINATES
+   BOARD COORDINATES — LEGACY X/Y MODAL
    ========================================================= */
 
 element('board')?.addEventListener('click', (event) => {
@@ -2401,30 +2530,32 @@ element('board')?.addEventListener('click', (event) => {
    ========================================================= */
 
 (function handlePaymentReturn() {
-  const params = new URLSearchParams(
-    window.location.search
-  );
-
+  const params = new URLSearchParams(window.location.search);
   const payment = params.get('payment');
 
-  if (payment === 'returned') {
-    setText(
-      'competitionMessage',
-      'You returned from PayFast. This page alone cannot confirm payment.'
-    );
-
-  } else if (payment === 'cancelled') {
-    setText(
-      'competitionMessage',
-      'Checkout was cancelled. No entry is confirmed by this page.'
-    );
-  }
-
   if (payment) {
+    // The customer has returned from the external checkout.
+    // Only the verified PayFast ITN can confirm payment.
+    sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
+
+    gamePaymentBusy = false;
+
+    if (payment === 'returned') {
+      setText(
+        'competitionMessage',
+        'You returned from PayFast. Your payment is not confirmed until Pixel Pick verifies it.'
+      );
+
+    } else if (payment === 'cancelled') {
+      setText(
+        'competitionMessage',
+        'Checkout was cancelled. Your entry is not confirmed. If your payment window is still open, you may continue checkout.'
+      );
+    }
+
     params.delete('payment');
     params.delete('order_id');
 
-    // Keep the referral parameter if one is present.
     const query = params.toString();
 
     const cleanUrl =
@@ -2453,21 +2584,16 @@ element('supportForm')?.addEventListener(
     const button = element('supportSubmitButton');
     const status = element('supportMessageStatus');
 
-    const topic =
-      element('supportTopic')?.value.trim();
-
-    const message =
-      element('supportMessage')?.value.trim();
+    const topic = element('supportTopic')?.value.trim();
+    const message = element('supportMessage')?.value.trim();
 
     if (status) status.textContent = '';
 
     try {
       if (button) button.disabled = true;
 
-      const {
-        data,
-        error: authError
-      } = await supabaseClient.auth.getUser();
+      const { data, error: authError } =
+        await supabaseClient.auth.getUser();
 
       if (authError) throw authError;
 
@@ -2479,11 +2605,7 @@ element('supportForm')?.addEventListener(
         );
       }
 
-      if (
-        !topic ||
-        !message ||
-        message.length < 10
-      ) {
+      if (!topic || !message || message.length < 10) {
         throw new Error(
           'Please select a topic and enter a message of at least 10 characters.'
         );
@@ -2508,10 +2630,7 @@ element('supportForm')?.addEventListener(
       form.reset();
 
     } catch (error) {
-      console.error(
-        'Support enquiry failed:',
-        error
-      );
+      console.error('Support enquiry failed:', error);
 
       if (status) {
         status.textContent =
@@ -2547,7 +2666,6 @@ supabaseClient.auth.onAuthStateChange(
     if (session?.user) {
       loadMyHistory();
       loadMyReferralDashboard(session.user);
-
     } else {
       const history = element('entryHistory');
 
