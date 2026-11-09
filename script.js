@@ -23,6 +23,12 @@ const CREATE_PAYMENT_ORDER_URL =
 const ACCOUNT_HISTORY_URL =
   `${SUPABASE_URL}/functions/v1/my-account-history`;
 
+const START_COMPETITION_ATTEMPT_URL =
+  `${SUPABASE_URL}/functions/v1/start-competition-attempt`;
+
+const SUBMIT_COMPETITION_ANSWER_URL =
+  `${SUPABASE_URL}/functions/v1/submit-competition-answer`;
+
 const PENDING_REFERRAL_STORAGE_KEY =
   'pixelPickPendingReferralCode';
 
@@ -41,6 +47,11 @@ let activeChallengeId = null;
 let challengeBusy = false;
 let historyRequestNumber = 0;
 let referralRequestNumber = 0;
+let activeGameAttempt = null;
+let activeGameTasks = [];
+let activeGameCompletedTaskIds = [];
+let activeGameEntryId = null;
+let gameSubmitting = false;
 
 /* =========================================================
    CAPTURE REFERRAL CODE BEFORE OTHER URL PROCESSING
@@ -1757,11 +1768,28 @@ async function loadMyHistory() {
 
       if (item.entry_number != null) {
         const number = document.createElement('p');
-
-        number.textContent =
-          `Entry number: ${item.entry_number}`;
-
+        number.textContent = `Entry number: ${item.entry_number}`;
         card.appendChild(number);
+      }
+
+      // Only actual competition entries can launch the ten-task game.
+      const entryId = item.entry_id || item.id;
+      const isEntry = item.record_type === 'entry';
+      const entryStatus = String(item.status || '').toLowerCase();
+      const isEligibleEntry = isEntry && entryId &&
+        (entryStatus === 'paid' || entryStatus === 'completed' ||
+         entryStatus === 'success' || item.entry_type === 'referral' ||
+         item.payment_status === 'paid');
+
+      if (isEligibleEntry) {
+        const playButton = document.createElement('button');
+        playButton.type = 'button';
+        playButton.className = 'cta';
+        playButton.textContent = 'Play competition';
+        playButton.addEventListener('click', () => {
+          startCompetitionGame(String(entryId), item.competition_name || 'Competition');
+        });
+        card.appendChild(playButton);
       }
 
       history.appendChild(card);
@@ -1897,6 +1925,194 @@ document.addEventListener('keydown', (event) => {
     closeClearHistoryModal();
   }
 });
+
+/* =========================================================
+   TEN-TASK COMPETITION GAME
+   ========================================================= */
+
+const GAME_OBJECT_ICONS = {
+  sneaker: '👟', shoe: '👟', cap: '🧢', ball: '⚽', watch: '⌚',
+  bag: '👜', sunglasses: '🕶️', hat: '🎩', backpack: '🎒'
+};
+
+const GAME_COLOUR_NAMES = {
+  red: 'Red', blue: 'Blue', green: 'Green', yellow: 'Yellow'
+};
+
+function gameElement(id) { return document.getElementById(id); }
+
+function setGameStatus(message) {
+  const node = gameElement('gameStatus');
+  if (node) node.textContent = message;
+}
+
+function closeCompetitionGame() {
+  gameElement('competitionGame')?.classList.add('hidden');
+  gameSubmitting = false;
+  activeGameAttempt = null;
+  activeGameTasks = [];
+  activeGameCompletedTaskIds = [];
+  activeGameEntryId = null;
+  loadMyHistory();
+}
+
+function normaliseOptions(options) {
+  if (!Array.isArray(options)) return [];
+  return options.map((option, index) => {
+    if (typeof option === 'string' || typeof option === 'number') {
+      return { key: ['A','B','C','D'][index], label: String(option) };
+    }
+    const key = String(option.key || option.answer_key || option.id || option.label || ['A','B','C','D'][index]).toUpperCase();
+    const label = String(option.text ?? option.value ?? option.answer ?? option.label ?? option.key ?? '');
+    return { key, label };
+  }).filter(option => option.key && option.label);
+}
+
+function renderGameGrid(grid) {
+  const host = gameElement('gameObjectGrid');
+  host.replaceChildren();
+  if (!Array.isArray(grid) || !grid.length) {
+    host.appendChild(makeParagraph('This task has no visual board data. Please contact support before continuing.'));
+    return false;
+  }
+  grid.forEach((item) => {
+    const tile = document.createElement('div');
+    tile.className = 'game-object-tile';
+    const colour = String(item.colour || item.color || 'grey').toLowerCase();
+    const object = String(item.object || 'item').toLowerCase();
+    const icon = document.createElement('span');
+    icon.className = 'game-object-icon';
+    icon.textContent = GAME_OBJECT_ICONS[object] || '◆';
+    const caption = document.createElement('span');
+    caption.className = 'game-object-caption';
+    caption.textContent = `${GAME_COLOUR_NAMES[colour] || colour} ${object}`;
+    tile.dataset.colour = colour;
+    tile.append(icon, caption);
+    host.appendChild(tile);
+  });
+  return true;
+}
+
+function currentUnansweredTask() {
+  return activeGameTasks.find(task =>
+    !activeGameCompletedTaskIds.includes(task.id)
+  );
+}
+
+function renderCurrentGameTask() {
+  const task = currentUnansweredTask();
+  const completedCount = activeGameCompletedTaskIds.length;
+  const progress = Math.min(100, completedCount * 10);
+  gameElement('gameProgressText').textContent = `Task ${Math.min(completedCount + 1, 10)} of 10`;
+  gameElement('gameProgressBar').style.width = `${progress}%`;
+  gameElement('gameTaskCard').classList.toggle('hidden', !task);
+  gameElement('gameCompletePanel').classList.add('hidden');
+  if (!task) {
+    gameElement('gameProgressText').textContent = '10 of 10 complete';
+    gameElement('gameProgressBar').style.width = '100%';
+    gameElement('gameTaskCard').classList.add('hidden');
+    gameElement('gameCompletePanel').classList.remove('hidden');
+    const savedScore = Number(activeGameAttempt?.total_score || 0);
+    const savedCorrect = Number(activeGameAttempt?.correct_answers || 0);
+    gameElement('gameFinalSummary').textContent = `Your saved result: ${savedScore} points. Correct answers: ${savedCorrect} out of 10.`;
+    setGameStatus('This entry has already completed all ten tasks.');
+    return;
+  }
+  const data = task.puzzle_data || {};
+  gameElement('gameTaskNumber').textContent = `TASK ${task.task_number || completedCount + 1}`;
+  gameElement('gameInstruction').textContent = task.instruction || data.question || 'Study the objects and choose the correct answer.';
+  gameElement('gameScoreText').textContent = `${Number(activeGameAttempt?.total_score || 0)} points`;
+  gameElement('gameAnswerFeedback').textContent = '';
+  if (!renderGameGrid(data.grid)) {
+    setGameStatus('This task could not be displayed safely. Please contact support.');
+    return;
+  }
+  const optionsHost = gameElement('gameAnswerOptions');
+  optionsHost.replaceChildren();
+  const options = normaliseOptions(data.options);
+  if (options.length !== 4) {
+    setGameStatus('This task does not contain four valid answer choices. Please contact support.');
+    return;
+  }
+  options.forEach(option => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'game-answer-button';
+    button.textContent = `${option.key}. ${option.label}`;
+    button.addEventListener('click', () => submitGameAnswer(task, option.key, button));
+    optionsHost.appendChild(button);
+  });
+  setGameStatus('Choose carefully. You can answer this task only once.');
+}
+
+async function startCompetitionGame(entryId, competitionName) {
+  const { data, error } = await supabaseClient.auth.getSession();
+  if (error || !data.session) {
+    openAccount();
+    showAccountMessage('Please sign in to play your competition entry.');
+    return;
+  }
+  activeGameEntryId = entryId;
+  gameElement('competitionGame').classList.remove('hidden');
+  gameElement('gameCompetitionTitle').textContent = competitionName;
+  gameElement('gameTaskCard').classList.add('hidden');
+  gameElement('gameCompletePanel').classList.add('hidden');
+  setGameStatus('Loading your saved competition attempt…');
+  try {
+    const result = await callEdgeFunction(START_COMPETITION_ATTEMPT_URL, { entry_id: entryId });
+    if (result.ok === false || !result.attempt || !Array.isArray(result.tasks) || result.tasks.length !== 10) {
+      throw new Error(result.error || 'The competition did not return all ten tasks.');
+    }
+    activeGameAttempt = result.attempt;
+    activeGameTasks = result.tasks;
+    activeGameCompletedTaskIds = Array.isArray(result.completed_task_ids) ? result.completed_task_ids : [];
+    gameElement('gameScoreText').textContent = `${Number(activeGameAttempt.total_score || 0)} points`;
+    renderCurrentGameTask();
+  } catch (error) {
+    console.error('Could not start competition attempt:', error);
+    setGameStatus(error.message || 'Could not start this competition. Please try again.');
+  }
+}
+
+async function submitGameAnswer(task, answerKey, clickedButton) {
+  if (gameSubmitting || activeGameCompletedTaskIds.includes(task.id)) return;
+  gameSubmitting = true;
+  const buttons = [...gameElement('gameAnswerOptions').querySelectorAll('button')];
+  buttons.forEach(button => button.disabled = true);
+  clickedButton.textContent += ' — submitting…';
+  setGameStatus('Saving your answer…');
+  try {
+    const result = await callEdgeFunction(SUBMIT_COMPETITION_ANSWER_URL, {
+      attempt_id: activeGameAttempt.id,
+      task_id: task.id,
+      selected_answer_key: answerKey
+    });
+    if (result.ok === false || result.error) throw new Error(result.error || 'Your answer was not saved.');
+    activeGameCompletedTaskIds.push(task.id);
+    activeGameAttempt.total_score = result.total_score ?? activeGameAttempt.total_score;
+    activeGameAttempt.correct_answers = result.correct_answers ?? activeGameAttempt.correct_answers;
+    gameElement('gameScoreText').textContent = `${Number(activeGameAttempt.total_score || 0)} points`;
+    gameElement('gameAnswerFeedback').textContent = result.correct ? `Correct — ${result.points_awarded || result.points || 0} points awarded.` : 'Answer recorded — no points for this task.';
+    if (result.completed || result.status === 'submitted' || activeGameCompletedTaskIds.length === 10) {
+      gameElement('gameProgressText').textContent = '10 of 10 complete';
+      gameElement('gameProgressBar').style.width = '100%';
+      gameElement('gameTaskCard').classList.add('hidden');
+      gameElement('gameCompletePanel').classList.remove('hidden');
+      const score = Number(result.total_score ?? activeGameAttempt.total_score ?? 0);
+      const correct = Number(result.correct_answers ?? activeGameAttempt.correct_answers ?? 0);
+      gameElement('gameFinalSummary').textContent = `Your score: ${score} points. Correct answers: ${correct} out of 10.`;
+      setGameStatus('All ten answers have been submitted and your result is saved.');
+    } else {
+      renderCurrentGameTask();
+    }
+  } catch (error) {
+    console.error('Could not submit competition answer:', error);
+    setGameStatus(error.message || 'Your answer could not be saved. Please try again.');
+    buttons.forEach(button => button.disabled = false);
+  } finally {
+    gameSubmitting = false;
+  }
+}
 
 /* =========================================================
    SKILL CHALLENGE AND CHECKOUT
