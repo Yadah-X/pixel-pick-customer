@@ -1798,13 +1798,13 @@ async function loadMyHistory() {
 
       card.append(title, kind, status, date);
 
-      if (item.monthly_entry_number != null) {
-  const number = document.createElement('p');
-  number.textContent =
-    `Entry number: ${item.monthly_entry_number}`;
+      if (item.entry_number != null) {
+        const number = document.createElement('p');
+        number.textContent =
+          `Entry number: ${item.entry_number}`;
 
-  card.appendChild(number);
-}
+        card.appendChild(number);
+      }
 
       const entryId = item.entry_id || item.id;
       const isEntry = item.record_type === 'entry';
