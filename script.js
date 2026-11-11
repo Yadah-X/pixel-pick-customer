@@ -1055,11 +1055,8 @@ function clearReferralDashboard(
   }
 
   if (element('referralCompetitionSelect')) {
-    element('referralCompetitionSelect').replaceChildren(
-      new Option('Sign in to continue', '')
-    );
-    element('referralCompetitionSelect').disabled = true;
-  }
+  populateReferralCompetitionSelect([]);
+}
 
   if (element('claimReferralRewardButton')) {
     element('claimReferralRewardButton').disabled = true;
