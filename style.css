@@ -958,7 +958,7 @@ footer {
   }
 
   #competitionGrid .card {
-    height: 350px;
+    height: 260px;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -966,8 +966,8 @@ footer {
 
   /* Smaller image section */
   #competitionGrid .visual {
-    height: 85px;
-    min-height: 85px;
+    height: 65px;
+    min-height: 65px;
     flex-shrink: 0;
     padding: 6px;
     font-size: 32px;
