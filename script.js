@@ -789,6 +789,7 @@ function finishSuccessfulAuthentication() {
   }
 }
 
+
 function setupForgotPassword() {
   const passwordInput = element('accountPassword');
 
@@ -821,6 +822,15 @@ function setupForgotPassword() {
       return;
     }
 
+    let captchaToken;
+
+    try {
+      captchaToken = await getTurnstileToken();
+    } catch (error) {
+      showAccountMessage(error.message);
+      return;
+    }
+
     button.disabled = true;
     showAccountMessage('Sending password-reset email…');
 
@@ -829,7 +839,8 @@ function setupForgotPassword() {
         await supabaseClient.auth.resetPasswordForEmail(
           email,
           {
-            redirectTo: `${SITE_URL}/?reset-password=true`
+            redirectTo: `${SITE_URL}/?reset-password=true`,
+            captchaToken
           }
         );
 
@@ -849,9 +860,11 @@ function setupForgotPassword() {
 
     } finally {
       button.disabled = false;
+      resetTurnstileWidget();
     }
   });
 }
+
 
 function showPasswordRecoveryScreen() {
   passwordRecoveryMode = true;
