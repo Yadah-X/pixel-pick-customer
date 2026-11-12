@@ -945,3 +945,96 @@ footer {
     line-height: 1.2;
   }
 }
+/* ========================================
+   PIXEL PICK — NEAT MOBILE COMPETITION CARDS
+   ======================================== */
+
+@media (max-width: 520px) {
+
+  #competitionGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  #competitionGrid .card {
+    height: 350px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Smaller image section */
+  #competitionGrid .visual {
+    height: 85px;
+    min-height: 85px;
+    flex-shrink: 0;
+    padding: 6px;
+    font-size: 32px;
+  }
+
+  #competitionGrid .visual img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* Neater card content */
+  #competitionGrid .pad {
+    padding: 8px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Keep OPEN COMPETITION on one line */
+  #competitionGrid .pill {
+    display: block;
+    text-align: center;
+    font-size: 7px;
+    line-height: 1.2;
+    padding: 4px 2px;
+    white-space: nowrap;
+    letter-spacing: 0;
+  }
+
+  /* Product names */
+  #competitionGrid .pad h3 {
+    font-size: 13px;
+    line-height: 1.25;
+    min-height: 48px;
+    margin: 8px 0 4px;
+    overflow-wrap: anywhere;
+  }
+
+  /* Prize description */
+  #competitionGrid .pad p {
+    font-size: 10px;
+    line-height: 1.25;
+    margin: 3px 0;
+  }
+
+  /* Price and Enter button */
+  #competitionGrid .row {
+    margin-top: auto;
+    padding-top: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 7px;
+  }
+
+  #competitionGrid .row b {
+    font-size: 12px;
+    text-align: center;
+  }
+
+  #competitionGrid .row button {
+    width: 100%;
+    min-height: 32px;
+    padding: 5px 2px;
+    font-size: 12px;
+    line-height: 1.2;
+    border-radius: 8px;
+  }
+}
