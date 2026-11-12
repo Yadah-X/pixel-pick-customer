@@ -930,6 +930,7 @@ function toggleAccountMode() {
    PERSONAL DETAILS
    ========================================================= */
 
+
 function renderPersonalDetails(user) {
   const panel = element('personalDetailsPanel');
 
@@ -944,24 +945,42 @@ function renderPersonalDetails(user) {
 
   const metadata = user.user_metadata || {};
 
-  if (element('profileFirstName')) {
-    element('profileFirstName').value =
-      metadata.first_name || '';
+  // Registered name and surname are always read-only.
+  const firstName = element('profileFirstName');
+  const lastName = element('profileLastName');
+
+  if (firstName) {
+    firstName.value = metadata.first_name || '';
+    firstName.readOnly = true;
   }
 
-  if (element('profileLastName')) {
-    element('profileLastName').value =
-      metadata.last_name || '';
+  if (lastName) {
+    lastName.value = metadata.last_name || '';
+    lastName.readOnly = true;
   }
 
-  if (element('profilePhone')) {
-    element('profilePhone').value =
-      metadata.phone_number || '';
+  // Contact details are read-only until Edit is selected.
+  const phone = element('profilePhone');
+  const email = element('profileEmail');
+
+  if (phone) {
+    phone.value = metadata.phone_number || '';
+    phone.readOnly = true;
   }
 
-  if (element('profileEmail')) {
-    element('profileEmail').value = user.email || '';
+  if (email) {
+    email.value = user.email || '';
+    email.readOnly = true;
   }
+
+  setHidden('editPersonalDetailsButton', false);
+  setHidden('savePersonalDetailsButton', true);
+  setHidden('cancelPersonalDetailsButton', true);
+
+  setText(
+    'personalDetailsMessage',
+    ''
+  );
 
   const verified = Boolean(
     user.email_confirmed_at || user.confirmed_at
@@ -980,6 +999,57 @@ function renderPersonalDetails(user) {
   );
 }
 
+
+// EDIT BUTTON
+element('editPersonalDetailsButton')?.addEventListener(
+  'click',
+  () => {
+    const phone = element('profilePhone');
+    const email = element('profileEmail');
+
+    if (phone) phone.readOnly = false;
+    if (email) email.readOnly = false;
+
+    // Name and surname must never become editable.
+    if (element('profileFirstName')) {
+      element('profileFirstName').readOnly = true;
+    }
+
+    if (element('profileLastName')) {
+      element('profileLastName').readOnly = true;
+    }
+
+    setHidden('editPersonalDetailsButton', true);
+    setHidden('savePersonalDetailsButton', false);
+    setHidden('cancelPersonalDetailsButton', false);
+
+    setText('personalDetailsMessage', '');
+
+    phone?.focus();
+  }
+);
+
+
+// CANCEL BUTTON
+element('cancelPersonalDetailsButton')?.addEventListener(
+  'click',
+  async () => {
+    const { data, error } =
+      await supabaseClient.auth.getUser();
+
+    if (error) {
+      console.error('Could not reload account details:', error);
+      return;
+    }
+
+    if (data.user) {
+      renderPersonalDetails(data.user);
+    }
+  }
+);
+
+
+// SAVE PERSONAL DETAILS
 element('personalDetailsForm')?.addEventListener(
   'submit',
   async (event) => {
@@ -988,32 +1058,18 @@ element('personalDetailsForm')?.addEventListener(
     const button = element('savePersonalDetailsButton');
     const message = element('personalDetailsMessage');
 
-    const firstName =
-      element('profileFirstName')?.value.trim();
-
-    const lastName =
-      element('profileLastName')?.value.trim();
-
     const phone =
       element('profilePhone')?.value.trim() || '';
 
     const newEmail =
-      element('profileEmail')?.value.trim();
+      element('profileEmail')?.value.trim() || '';
 
     if (message) message.textContent = '';
 
-    if (!firstName || !lastName || !newEmail) {
+    if (!newEmail) {
       if (message) {
         message.textContent =
-          'Please enter your first name, surname and email address.';
-      }
-      return;
-    }
-
-    if (firstName.length > 80 || lastName.length > 80) {
-      if (message) {
-        message.textContent =
-          'Your first name and surname must each be no longer than 80 characters.';
+          'Please enter your email address.';
       }
       return;
     }
@@ -1044,42 +1100,47 @@ element('personalDetailsForm')?.addEventListener(
         throw new Error('Please sign in again.');
       }
 
-      const { error: detailsError } =
-        await supabaseClient.auth.updateUser({
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            phone_number: phone
-          }
-        });
-
-      if (detailsError) throw detailsError;
-
-      if (
-        newEmail.toLowerCase() !==
-        (user.email || '').toLowerCase()
-      ) {
-        const { error: emailError } =
-          await supabaseClient.auth.updateUser({
-            email: newEmail
-          });
-
-        if (emailError) throw emailError;
-
-        if (message) {
-          message.textContent =
-            'Your personal details have been saved. Please check your email for confirmation instructions to complete your email address change.';
+      // Only phone number and email can be changed here.
+      // First name and surname cannot be edited.
+      const updates = {
+        data: {
+          phone_number: phone
         }
+      };
 
-      } else if (message) {
-        message.textContent =
-          'Your personal details have been saved successfully.';
+      const emailChanged =
+        newEmail.toLowerCase() !==
+        (user.email || '').toLowerCase();
+
+      if (emailChanged) {
+        updates.email = newEmail;
       }
 
+      const { error: updateError } =
+        await supabaseClient.auth.updateUser(updates);
+
+      if (updateError) throw updateError;
+
+      if (emailChanged) {
+        if (message) {
+          message.textContent =
+            'Your phone number has been saved. Please check your email for confirmation instructions to complete your email address change.';
+        }
+      } else {
+        if (message) {
+          message.textContent =
+            'Your contact details have been saved successfully.';
+        }
+      }
+
+      // Reload the latest account information.
       await refreshAccount();
 
     } catch (error) {
-      console.error('Could not update personal details:', error);
+      console.error(
+        'Could not update personal details:',
+        error
+      );
 
       if (message) {
         message.textContent =
@@ -1092,6 +1153,7 @@ element('personalDetailsForm')?.addEventListener(
     }
   }
 );
+
 
 /* =========================================================
    CHANGE ACCOUNT PASSWORD
