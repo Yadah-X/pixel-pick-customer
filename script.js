@@ -175,6 +175,144 @@ async function callEdgeFunction(url, body) {
 }
 
 /* =========================================================
+   CLOUDFLARE TURNSTILE CAPTCHA
+   Used for registration, sign-in and password-reset requests.
+   ========================================================= */
+
+function loadTurnstileApi() {
+  if (window.turnstile) {
+    return Promise.resolve();
+  }
+
+  if (turnstileScriptPromise) {
+    return turnstileScriptPromise;
+  }
+
+  turnstileScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+
+    script.src =
+      'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+
+    script.async = true;
+    script.defer = true;
+
+    script.onload = () => {
+      if (window.turnstile) {
+        resolve();
+      } else {
+        turnstileScriptPromise = null;
+        reject(new Error('Cloudflare security verification could not load.'));
+      }
+    };
+
+    script.onerror = () => {
+      turnstileScriptPromise = null;
+      reject(new Error('Could not load the security verification. Please refresh the page.'));
+    };
+
+    document.head.appendChild(script);
+  });
+
+  return turnstileScriptPromise;
+}
+
+async function ensureTurnstileWidget() {
+  const form = element('accountForm');
+
+  if (!form) {
+    throw new Error('The account form could not be found.');
+  }
+
+  let container = element('turnstileContainer');
+
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'turnstileContainer';
+
+    const widget = document.createElement('div');
+    widget.id = 'turnstileWidget';
+
+    const message = document.createElement('p');
+    message.id = 'turnstileMessage';
+    message.setAttribute('aria-live', 'polite');
+
+    container.append(widget, message);
+
+    const submit = form.querySelector('button[type="submit"]');
+
+    if (submit) {
+      form.insertBefore(container, submit);
+    } else {
+      form.appendChild(container);
+    }
+  }
+
+  if (turnstileWidgetId !== null && window.turnstile) {
+    return;
+  }
+
+  await loadTurnstileApi();
+
+  turnstileWidgetId = window.turnstile.render(
+    '#turnstileWidget',
+    {
+      sitekey: TURNSTILE_SITE_KEY,
+
+      callback: (token) => {
+        turnstileToken = token;
+        setText('turnstileMessage', 'Security verification completed.');
+      },
+
+      'expired-callback': () => {
+        turnstileToken = '';
+        setText(
+          'turnstileMessage',
+          'Verification expired. Please complete the security check again.'
+        );
+      },
+
+      'error-callback': () => {
+        turnstileToken = '';
+        setText(
+          'turnstileMessage',
+          'Security verification failed. Please try again.'
+        );
+      }
+    }
+  );
+}
+
+async function getTurnstileToken() {
+  await ensureTurnstileWidget();
+
+  const token =
+    turnstileToken ||
+    window.turnstile.getResponse(turnstileWidgetId);
+
+  if (!token) {
+    throw new Error(
+      'Please complete the Cloudflare security check before continuing.'
+    );
+  }
+
+  return token;
+}
+
+function resetTurnstileWidget() {
+  turnstileToken = '';
+
+  if (
+    turnstileWidgetId !== null &&
+    window.turnstile
+  ) {
+    window.turnstile.reset(turnstileWidgetId);
+  }
+
+  setText('turnstileMessage', '');
+}
+
+/* =========================================================
    CAPTURE REFERRAL CODE
    ========================================================= */
 
