@@ -3301,6 +3301,7 @@ setupPageNavigation();
 setupMenu();
 setupInactivityLogout();
 setupForgotPassword();
+setupPasswordRecovery();
 
 supabaseClient.auth.onAuthStateChange(
   (event, session) => {
