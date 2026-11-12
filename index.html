@@ -183,77 +183,144 @@
         Sign out
       </button>
 
-      <div id="personalDetailsPanel" class="card hidden">
-        <h3>Personal Details</h3>
-        <p>View and update the information associated with your account.</p>
+      
+<div id="personalDetailsPanel" class="card hidden">
+  <h3>Personal Details</h3>
+  <p>View your registered information and update your contact details.</p>
 
-        <p id="emailVerificationStatus" role="status" aria-live="polite">
-          Email verification status will appear here.
-        </p>
+  <p id="emailVerificationStatus" role="status" aria-live="polite">
+    Email verification status will appear here.
+  </p>
 
-        <p>
-          <strong>Account created:</strong>
-          <span id="accountCreatedDate">Loading...</span>
-        </p>
+  <p>
+    <strong>Account created:</strong>
+    <span id="accountCreatedDate">Loading...</span>
+  </p>
 
-        <form id="personalDetailsForm">
-          <label for="profileFirstName">First name</label>
-          <input id="profileFirstName" type="text"
-            autocomplete="given-name" maxlength="80" required>
+  <form id="personalDetailsForm">
 
-          <label for="profileLastName">Surname</label>
-          <input id="profileLastName" type="text"
-            autocomplete="family-name" maxlength="80" required>
+    <label for="profileFirstName">First name</label>
+    <input
+      id="profileFirstName"
+      type="text"
+      autocomplete="given-name"
+      maxlength="80"
+      readonly
+    >
 
-          <label for="profilePhone">Phone number (optional)</label>
-          <input id="profilePhone" type="tel"
-            autocomplete="tel" maxlength="30"
-            placeholder="Enter your phone number">
+    <label for="profileLastName">Surname</label>
+    <input
+      id="profileLastName"
+      type="text"
+      autocomplete="family-name"
+      maxlength="80"
+      readonly
+    >
 
-          <small>
-            Your phone number is optional and is not used for account
-            verification. Pixel Pick verifies accounts through email only.
-          </small>
+    <label for="profilePhone">Phone number (optional)</label>
+    <input
+      id="profilePhone"
+      type="tel"
+      autocomplete="tel"
+      maxlength="30"
+      placeholder="Enter your phone number"
+      readonly
+    >
 
-          <label for="profileEmail">Email address</label>
-          <input id="profileEmail" type="email"
-            autocomplete="email" required>
+    <small>
+      Your phone number is optional and is not used for account
+      verification. Pixel Pick verifies accounts through email only.
+    </small>
 
-          <small>
-            Changing your email address may require confirmation through
-            your email inbox before the change takes effect.
-          </small>
+    <label for="profileEmail">Email address</label>
+    <input
+      id="profileEmail"
+      type="email"
+      autocomplete="email"
+      readonly
+      required
+    >
 
-          <button class="cta full" id="savePersonalDetailsButton"
-            type="submit">
-            Save personal details
-          </button>
+    <small>
+      Changing your email address may require confirmation through
+      your email inbox before the change takes effect.
+    </small>
 
-          <p id="personalDetailsMessage" role="status" aria-live="polite"></p>
-        </form>
+    <button
+      class="cta full"
+      id="editPersonalDetailsButton"
+      type="button"
+    >
+      Edit
+    </button>
 
-        <hr>
+    <button
+      class="cta full hidden"
+      id="savePersonalDetailsButton"
+      type="submit"
+    >
+      Save Changes
+    </button>
 
-        <h3>Change Password</h3>
-        <p>Choose a new password for your Pixel Pick account.</p>
+    <button
+      class="outline full hidden"
+      id="cancelPersonalDetailsButton"
+      type="button"
+    >
+      Cancel
+    </button>
 
-        <form id="changePasswordForm">
-          <label for="newAccountPassword">New password</label>
-          <input id="newAccountPassword" type="password"
-            autocomplete="new-password" minlength="8" required>
+    <p
+      id="personalDetailsMessage"
+      role="status"
+      aria-live="polite"
+    ></p>
 
-          <label for="confirmNewAccountPassword">Confirm new password</label>
-          <input id="confirmNewAccountPassword" type="password"
-            autocomplete="new-password" minlength="8" required>
+  </form>
 
-          <button class="cta full" id="changePasswordButton" type="submit">
-            Update password
-          </button>
+  <hr>
 
-          <p id="changePasswordMessage" role="status" aria-live="polite"></p>
-        </form>
-      </div>
-    </section>
+  <h3>Change Password</h3>
+  <p>Choose a new password for your account.</p>
+
+  <form id="changePasswordForm">
+
+    <label for="newAccountPassword">New password</label>
+    <input
+      id="newAccountPassword"
+      type="password"
+      autocomplete="new-password"
+      minlength="8"
+      required
+    >
+
+    <label for="confirmNewAccountPassword">Confirm new password</label>
+    <input
+      id="confirmNewAccountPassword"
+      type="password"
+      autocomplete="new-password"
+      minlength="8"
+      required
+    >
+
+    <button
+      class="cta full"
+      id="changePasswordButton"
+      type="submit"
+    >
+      Update password
+    </button>
+
+    <p
+      id="changePasswordMessage"
+      role="status"
+      aria-live="polite"
+    ></p>
+
+  </form>
+</div>
+</section>
+
 
     <!-- REFERRALS -->
     <section id="referral" class="section dark page-hidden">
