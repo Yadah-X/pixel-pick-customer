@@ -1896,6 +1896,7 @@ async function refreshAccount() {
    REGISTRATION AND SIGN-IN
    ========================================================= */
 
+
 element('accountForm')?.addEventListener(
   'submit',
   async (event) => {
@@ -1930,6 +1931,8 @@ element('accountForm')?.addEventListener(
     if (submit) submit.disabled = true;
 
     showAccountMessage('Please wait…');
+
+    let captchaUsed = false;
 
     try {
       if (accountMode === 'signup') {
@@ -1980,9 +1983,11 @@ element('accountForm')?.addEventListener(
           pendingReferralCode &&
           /^PP-[A-Z0-9]{12}$/.test(pendingReferralCode)
         ) {
-          signupMetadata.referral_code =
-            pendingReferralCode;
+          signupMetadata.referral_code = pendingReferralCode;
         }
+
+        const captchaToken = await getTurnstileToken();
+        captchaUsed = true;
 
         const { data, error } =
           await supabaseClient.auth.signUp({
@@ -1990,7 +1995,8 @@ element('accountForm')?.addEventListener(
             password,
             options: {
               emailRedirectTo: SITE_URL,
-              data: signupMetadata
+              data: signupMetadata,
+              captchaToken
             }
           });
 
@@ -2023,10 +2029,16 @@ element('accountForm')?.addEventListener(
         }
 
       } else {
+        const captchaToken = await getTurnstileToken();
+        captchaUsed = true;
+
         const { error } =
           await supabaseClient.auth.signInWithPassword({
             email,
-            password
+            password,
+            options: {
+              captchaToken
+            }
           });
 
         if (error) throw error;
@@ -2048,6 +2060,10 @@ element('accountForm')?.addEventListener(
       );
 
     } finally {
+      if (captchaUsed) {
+        resetTurnstileWidget();
+      }
+
       const { data } =
         await supabaseClient.auth.getSession();
 
@@ -2057,6 +2073,7 @@ element('accountForm')?.addEventListener(
     }
   }
 );
+
 
 /* =========================================================
    SIGN OUT
