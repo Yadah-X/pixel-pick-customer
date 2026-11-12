@@ -701,6 +701,153 @@ function setupForgotPassword() {
   });
 }
 
+function showPasswordRecoveryScreen() {
+  passwordRecoveryMode = true;
+
+  const modal = element('accountModal');
+
+  if (modal) {
+    modal.classList.remove('hidden');
+  }
+
+  setText('accountTitle', 'Reset your password');
+
+  setHidden('accountForm', true);
+  setHidden('accountModeButton', true);
+  setHidden('signOutButton', true);
+  setHidden('passwordResetForm', false);
+
+  setText('passwordResetMessage', '');
+  setText('accountMessage', '');
+
+  const newPassword = element('newPassword');
+
+  if (newPassword) {
+    newPassword.value = '';
+    newPassword.focus();
+  }
+}
+
+
+function setupPasswordRecovery() {
+  const form = element('passwordResetForm');
+
+  if (!form || form.dataset.recoverySetup === 'true') {
+    return;
+  }
+
+  form.dataset.recoverySetup = 'true';
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const newPassword =
+      element('newPassword')?.value || '';
+
+    const confirmNewPassword =
+      element('confirmNewPassword')?.value || '';
+
+    const button =
+      element('saveNewPasswordButton');
+
+    if (newPassword.length < 8) {
+      setText(
+        'passwordResetMessage',
+        'Your new password must contain at least 8 characters.'
+      );
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setText(
+        'passwordResetMessage',
+        'Your passwords do not match. Please check and try again.'
+      );
+      return;
+    }
+
+    if (button) {
+      button.disabled = true;
+    }
+
+    setText(
+      'passwordResetMessage',
+      'Saving your new password…'
+    );
+
+    try {
+      const { error } =
+        await supabaseClient.auth.updateUser({
+          password: newPassword
+        });
+
+      if (error) throw error;
+
+      passwordRecoveryMode = false;
+
+      // Remove the password-reset URL from the browser.
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname
+      );
+
+      setHidden('passwordResetForm', true);
+      setHidden('accountForm', false);
+      setHidden('accountModeButton', false);
+
+      setText('accountTitle', 'Sign in');
+
+      if (element('accountPassword')) {
+        element('accountPassword').value = '';
+      }
+
+      if (element('newPassword')) {
+        element('newPassword').value = '';
+      }
+
+      if (element('confirmNewPassword')) {
+        element('confirmNewPassword').value = '';
+      }
+
+      setText(
+        'accountMessage',
+        'Your password has been updated successfully. Please sign in with your new password.'
+      );
+
+      setText('passwordResetMessage', '');
+
+      // Return the customer to the signed-out sign-in screen.
+      const { error: signOutError } =
+        await supabaseClient.auth.signOut();
+
+      if (signOutError) {
+        console.warn(
+          'Password updated, but sign-out failed:',
+          signOutError
+        );
+      }
+
+    } catch (error) {
+      console.error(
+        'Password update failed:',
+        error
+      );
+
+      setText(
+        'passwordResetMessage',
+        error.message ||
+        'Could not update your password. Please try again.'
+      );
+
+    } finally {
+      if (button) {
+        button.disabled = false;
+      }
+    }
+  });
+}
+
 function updateRegistrationFields(signedIn = false) {
   const registering =
     accountMode === 'signup' && !signedIn;
