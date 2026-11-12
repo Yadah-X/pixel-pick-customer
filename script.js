@@ -753,10 +753,20 @@ if (competition.product_image_url) {
    ACCOUNT MODAL AND PASSWORD RESET
    ========================================================= */
 
+
 function openAccount() {
   accountModal?.classList.remove('hidden');
+
   refreshAccount();
+
+  ensureTurnstileWidget().catch((error) => {
+    console.error('Turnstile could not be displayed:', error);
+    showAccountMessage(
+      error.message || 'Security verification could not load. Please refresh the page.'
+    );
+  });
 }
+
 
 function closeAccount() {
   accountModal?.classList.add('hidden');
