@@ -503,8 +503,8 @@ async function loadCompetitions() {
     const { data, error } = await supabaseClient
       .from('competitions')
       .select(
-        'id, name, prize_description, entry_price_cents, closes_at'
-      )
+  'id, name, prize_description, entry_price_cents, closes_at, product_image_url'
+)
       .eq('status', 'open')
       .order('created_at', { ascending: false });
 
@@ -528,9 +528,29 @@ async function loadCompetitions() {
       card.className = 'card';
 
       const visual = document.createElement('div');
-      visual.className = 'visual';
-      visual.textContent = '🎁';
-      visual.setAttribute('aria-hidden', 'true');
+visual.className = 'visual';
+
+if (competition.product_image_url) {
+  const image = document.createElement('img');
+
+  image.src = competition.product_image_url;
+  image.alt = `Image of ${competition.name}`;
+
+  image.style.width = '100%';
+  image.style.height = '100%';
+  image.style.objectFit = 'contain';
+  image.style.display = 'block';
+
+  image.addEventListener('error', () => {
+    visual.textContent = '🎁';
+    visual.setAttribute('aria-hidden', 'true');
+  });
+
+  visual.appendChild(image);
+} else {
+  visual.textContent = '🎁';
+  visual.setAttribute('aria-hidden', 'true');
+}
 
       const pad = document.createElement('div');
       pad.className = 'pad';
