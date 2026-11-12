@@ -357,11 +357,12 @@ function setupPageNavigation() {
   }
 
   const pages = [
-    'entries',
-    'referral',
-    'accountArea',
-    'support'
-  ];
+  'entries',
+  'referral',
+  'accountArea',
+  'howToPlay',
+  'support'
+];
 
   function showPage(page, updateAddress = true) {
     const validPages = [
