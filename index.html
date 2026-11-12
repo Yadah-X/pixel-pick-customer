@@ -737,6 +737,48 @@
 
       </form>
 
+<!-- PASSWORD RESET FORM -->
+<form id="passwordResetForm" class="hidden">
+
+  <p>
+    Enter your new password below.
+  </p>
+
+  <label for="newPassword">New password</label>
+  <input
+    id="newPassword"
+    name="new_password"
+    type="password"
+    autocomplete="new-password"
+    minlength="8"
+    required
+  >
+
+  <label for="confirmNewPassword">Confirm new password</label>
+  <input
+    id="confirmNewPassword"
+    name="confirm_new_password"
+    type="password"
+    autocomplete="new-password"
+    minlength="8"
+    required
+  >
+
+  <button
+    class="cta full"
+    id="saveNewPasswordButton"
+    type="submit"
+  >
+    Save new password
+  </button>
+
+  <p id="passwordResetMessage"
+     role="status"
+     aria-live="polite"></p>
+
+</form>
+<!-- END PASSWORD RESET FORM -->
+
       <button class="outline" id="accountModeButton" type="button"
         onclick="toggleAccountMode()">
         Need an account? Register
