@@ -1038,3 +1038,12 @@ footer {
     border-radius: 8px;
   }
 }
+
+/* Prevent long-press selection and dragging on the Pixel Pick logo */
+.logo {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+}
