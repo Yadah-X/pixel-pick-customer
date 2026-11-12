@@ -11,7 +11,11 @@ const SUPABASE_PUBLISHABLE_KEY =
   'sb_publishable_N4pRAlpCzjTEoKR7TCYOEA_Irj7mCrv';
 
 const SITE_URL = 'https://pixel-pick-customer.onrender.com';
+const TURNSTILE_SITE_KEY = '0x4AAAAAAF-RWWgVowvnilq4';
 
+let turnstileWidgetId = null;
+let turnstileToken = '';
+let turnstileScriptPromise = null;
 const VERIFY_CHALLENGE_URL =
   `${SUPABASE_URL}/functions/v1/verify-skill-challenge`;
 
