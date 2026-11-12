@@ -3303,9 +3303,22 @@ setupInactivityLogout();
 setupForgotPassword();
 setupPasswordRecovery();
 
+
 supabaseClient.auth.onAuthStateChange(
   (event, session) => {
     updateAccountInterface(session);
+
+    const recoveryLink =
+      new URLSearchParams(window.location.search)
+        .get('reset-password') === 'true';
+
+    if (
+      event === 'PASSWORD_RECOVERY' ||
+      (recoveryLink && session?.user)
+    ) {
+      showPasswordRecoveryScreen();
+      return;
+    }
 
     if (session?.user) {
       startIdleLogout(event);
@@ -3331,6 +3344,7 @@ supabaseClient.auth.onAuthStateChange(
 
 loadCompetitions();
 refreshAccount();
+
 
 /* =========================================================
    ACCOUNT BUTTONS
