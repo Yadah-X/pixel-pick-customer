@@ -1851,6 +1851,20 @@ function updateAccountInterface(session) {
   renderPersonalDetails(session?.user || null);
 }
 
+async function refreshAccount() {
+  const { data, error } =
+    await supabaseClient.auth.getSession();
+
+  if (error) {
+    console.error('Could not refresh account:', error);
+    return null;
+  }
+
+  updateAccountInterface(data.session);
+
+  return data.session;
+}
+
 /* =========================================================
    REFRESH ACCOUNT AND HISTORY
    ========================================================= */
