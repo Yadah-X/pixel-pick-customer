@@ -43,7 +43,7 @@ const modal = document.getElementById('modal');
 const accountModal = document.getElementById('accountModal');
 
 let accountMode = 'signin';
-
+let passwordRecoveryMode = false;
 let historyRequestNumber = 0;
 let referralRequestNumber = 0;
 
