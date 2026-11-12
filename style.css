@@ -871,3 +871,77 @@ footer {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ========================================
+   PIXEL PICK — COMPACT COMPETITION CARDS
+   ======================================== */
+
+@media (max-width: 520px) {
+
+  /* Three competitions side by side */
+  #competitionGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  /* Smaller product image area */
+  #competitionGrid .visual {
+    height: 105px;
+    min-height: 105px;
+    font-size: 35px;
+    padding: 5px;
+  }
+
+  #competitionGrid .visual img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* Reduce space inside each card */
+  #competitionGrid .pad {
+    padding: 9px;
+  }
+
+  /* Smaller competition label */
+  #competitionGrid .pill {
+    font-size: 8px;
+    padding: 4px 5px;
+    letter-spacing: 0;
+  }
+
+  /* Smaller competition name */
+  #competitionGrid .pad h3 {
+    font-size: 13px;
+    line-height: 1.25;
+    margin: 9px 0 6px;
+  }
+
+  /* Smaller description */
+  #competitionGrid .pad p {
+    font-size: 10px;
+    line-height: 1.35;
+    margin: 5px 0;
+  }
+
+  /* Stack price and button neatly */
+  #competitionGrid .row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 7px;
+    margin-top: 10px;
+  }
+
+  #competitionGrid .row b {
+    font-size: 12px;
+  }
+
+  /* Smaller buttons */
+  #competitionGrid .row button {
+    width: 100%;
+    min-height: 34px;
+    padding: 6px 3px;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+}
