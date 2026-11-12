@@ -577,7 +577,7 @@ if (competition.product_image_url) {
 
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = 'Start skill challenge';
+      button.textContent = 'Enter';
 
       button.addEventListener('click', () => {
         startCompetitionGame(
