@@ -1214,7 +1214,10 @@ element('cancelPersonalDetailsButton')?.addEventListener(
 );
 
 
+// =========================================================
 // SAVE PERSONAL DETAILS
+// =========================================================
+
 element('personalDetailsForm')?.addEventListener(
   'submit',
   async (event) => {
@@ -1223,7 +1226,7 @@ element('personalDetailsForm')?.addEventListener(
     const button = element('savePersonalDetailsButton');
     const message = element('personalDetailsMessage');
 
-    const phone =
+    const enteredPhone =
       element('profilePhone')?.value.trim() || '';
 
     const newEmail =
@@ -1239,12 +1242,36 @@ element('personalDetailsForm')?.addEventListener(
       return;
     }
 
-    if (phone.length > 30) {
+    if (enteredPhone.length > 30) {
       if (message) {
         message.textContent =
           'Your phone number must be no longer than 30 characters.';
       }
       return;
+    }
+
+    // Convert South African numbers to +27 format.
+    let phone = null;
+
+    if (enteredPhone) {
+      const digits = enteredPhone.replace(/\D/g, '');
+
+      if (/^0[6-8][0-9]{8}$/.test(digits)) {
+        phone = '+27' + digits.substring(1);
+
+      } else if (/^27[6-8][0-9]{8}$/.test(digits)) {
+        phone = '+' + digits;
+
+      } else if (/^\+27[6-8][0-9]{8}$/.test(enteredPhone)) {
+        phone = enteredPhone;
+
+      } else {
+        if (message) {
+          message.textContent =
+            'Please enter a valid South African mobile number, for example 0612345678 or +27612345670.';
+        }
+        return;
+      }
     }
 
     if (button) button.disabled = true;
@@ -1265,11 +1292,13 @@ element('personalDetailsForm')?.addEventListener(
         throw new Error('Please sign in again.');
       }
 
-      // Only phone number and email can be changed here.
-      // First name and surname cannot be edited.
+      // Save the normalised phone number.
+      // The Supabase Auth database trigger automatically
+      // synchronises this information with profiles.
       const updates = {
         data: {
-          phone_number: phone
+          ...user.user_metadata,
+          phone_number: phone || ''
         }
       };
 
@@ -1308,9 +1337,19 @@ element('personalDetailsForm')?.addEventListener(
       );
 
       if (message) {
-        message.textContent =
-          error.message ||
-          'Could not save your details. Please try again.';
+        if (
+          error.code === '23505' ||
+          error.message?.toLowerCase().includes(
+            'duplicate key'
+          )
+        ) {
+          message.textContent =
+            'This phone number is already registered to another account. Please use a different number.';
+        } else {
+          message.textContent =
+            error.message ||
+            'Could not save your details. Please try again.';
+        }
       }
 
     } finally {
