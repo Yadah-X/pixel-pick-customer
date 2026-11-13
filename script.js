@@ -2075,10 +2075,10 @@ if (normalizedPhone) {
           sessionStorage.getItem(PENDING_REFERRAL_STORAGE_KEY);
 
         const signupMetadata = {
-          first_name: firstName,
-          last_name: lastName,
-          phone_number: phone
-        };
+  first_name: firstName,
+  last_name: lastName,
+  phone_number: normalizedPhone
+};
 
         if (
           pendingReferralCode &&
