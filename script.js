@@ -2002,11 +2002,58 @@ element('accountForm')?.addEventListener(
           );
         }
 
-        if (phone.length > 30) {
-          throw new Error(
-            'Your phone number must be no longer than 30 characters.'
-          );
-        }
+        
+if (phone.length > 30) {
+  throw new Error(
+    'Your phone number must be no longer than 30 characters.'
+  );
+}
+
+// Convert the phone number to South African +27 format.
+let normalizedPhone = '';
+
+if (phone) {
+  const digits = phone.replace(/\D/g, '');
+
+  if (/^0[6-8][0-9]{8}$/.test(digits)) {
+    normalizedPhone = '+27' + digits.substring(1);
+
+  } else if (/^27[6-8][0-9]{8}$/.test(digits)) {
+    normalizedPhone = '+' + digits;
+
+  } else if (/^\+27[6-8][0-9]{8}$/.test(phone)) {
+    normalizedPhone = phone;
+
+  } else {
+    throw new Error(
+      'Please enter a valid South African mobile number, for example 0682549716 or +27682549716.'
+    );
+  }
+}
+
+// Check whether this cellphone number is already registered.
+if (normalizedPhone) {
+  const { data: phoneAvailable, error: phoneCheckError } =
+    await supabaseClient.rpc(
+      'is_phone_number_available',
+      {
+        p_phone: normalizedPhone
+      }
+    );
+
+  if (phoneCheckError) {
+    throw new Error(
+      'We could not verify your cellphone number. Please try again.'
+    );
+  }
+
+  if (phoneAvailable !== true) {
+    throw new Error(
+      'This cellphone number is already registered to another Pixel Pick account. Please use a different number.'
+    );
+  }
+}
+
 
         if (password.length < 8) {
           throw new Error(
