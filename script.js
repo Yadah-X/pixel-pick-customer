@@ -1911,6 +1911,7 @@ async function refreshAccount() {
    ========================================================= */
 
 
+
 element('accountForm')?.addEventListener(
   'submit',
   async (event) => {
@@ -2003,46 +2004,71 @@ element('accountForm')?.addEventListener(
         const captchaToken = await getTurnstileToken();
         captchaUsed = true;
 
-        if (error) throw error;
+        const { data, error } =
+          await supabaseClient.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: SITE_URL,
+              data: signupMetadata,
+              captchaToken
+            }
+          });
 
-// Detect an existing account returned by Supabase
-if (
-  data.user &&
-  data.user.identities &&
-  data.user.identities.length === 0
-) {
-  showAccountMessage(
-    'This email address is already registered. Please sign in instead, or use Forgot Password if you cannot remember your password.'
-  );
+        if (error) {
+          if (
+            error.message?.toLowerCase().includes(
+              'already registered'
+            ) ||
+            error.message?.toLowerCase().includes(
+              'already exists'
+            )
+          ) {
+            throw new Error(
+              'This email address is already registered. Please sign in instead, or use Forgot Password if you cannot remember your password.'
+            );
+          }
 
-  return;
-}
+          throw error;
+        }
 
-sessionStorage.removeItem(
-  PENDING_REFERRAL_STORAGE_KEY
-);
+        if (
+          data.user &&
+          data.user.identities &&
+          data.user.identities.length === 0
+        ) {
+          showAccountMessage(
+            'This email address is already registered. Please sign in instead, or use Forgot Password if you cannot remember your password.'
+          );
 
-if (data.session) {
-  showAccountMessage(
-    'Your account has been created successfully.'
-  );
+          return;
+        }
 
-  await refreshAccount();
-  finishSuccessfulAuthentication();
+        sessionStorage.removeItem(
+          PENDING_REFERRAL_STORAGE_KEY
+        );
 
-} else {
-  if (element('accountPassword')) {
-    element('accountPassword').value = '';
-  }
+        if (data.session) {
+          showAccountMessage(
+            'Your account has been created successfully.'
+          );
 
-  if (element('accountConfirmPassword')) {
-    element('accountConfirmPassword').value = '';
-  }
+          await refreshAccount();
+          finishSuccessfulAuthentication();
 
-  showAccountMessage(
-    'Registration successful! Please check your email and click the confirmation link before signing in. Also check your spam folder.'
-  );
-}
+        } else {
+          if (element('accountPassword')) {
+            element('accountPassword').value = '';
+          }
+
+          if (element('accountConfirmPassword')) {
+            element('accountConfirmPassword').value = '';
+          }
+
+          showAccountMessage(
+            'Registration successful! Please check your email and click the confirmation link before signing in. Also check your spam folder.'
+          );
+        }
 
       } else {
         const captchaToken = await getTurnstileToken();
@@ -2089,6 +2115,7 @@ if (data.session) {
     }
   }
 );
+
 
 
 /* =========================================================
