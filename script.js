@@ -630,126 +630,190 @@ function setupMenu() {
   });
 }
 
+
 /* =========================================================
    COMPETITIONS
+   Home: maximum 3 manually featured open competitions.
+   Competitions page: every open competition.
    ========================================================= */
+
+function createCompetitionCard(competition) {
+  const card = document.createElement('article');
+  card.className = 'card';
+
+  const visual = document.createElement('div');
+  visual.className = 'visual';
+
+  if (competition.product_image_url) {
+    const image = document.createElement('img');
+
+    image.src = competition.product_image_url;
+    image.alt = `Image of ${competition.name}`;
+
+    image.style.width = '100%';
+    image.style.height = '100%';
+    image.style.objectFit = 'contain';
+    image.style.display = 'block';
+
+    image.addEventListener('error', () => {
+      visual.replaceChildren();
+      visual.textContent = '🎁';
+      visual.setAttribute('aria-hidden', 'true');
+    });
+
+    visual.appendChild(image);
+  } else {
+    visual.textContent = '🎁';
+    visual.setAttribute('aria-hidden', 'true');
+  }
+
+  const pad = document.createElement('div');
+  pad.className = 'pad';
+
+  const pill = document.createElement('span');
+  pill.className = 'pill';
+  pill.textContent = 'OPEN COMPETITION';
+
+  const title = document.createElement('h3');
+  title.textContent = competition.name;
+
+  const description = document.createElement('p');
+  description.textContent =
+    competition.prize_description ||
+    'See the competition rules for details.';
+
+  const row = document.createElement('div');
+  row.className = 'row';
+
+  const price = document.createElement('b');
+  price.textContent = formatRand(
+    competition.entry_price_cents
+  );
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = 'Enter';
+
+  button.addEventListener('click', () => {
+    startCompetitionGame(
+      String(competition.id),
+      competition.name || 'Competition',
+      'competition'
+    );
+  });
+
+  row.append(price, button);
+  pad.append(pill, title, description, row);
+  card.append(visual, pad);
+
+  return card;
+}
+
 
 async function loadCompetitions() {
   const grid = element('competitionGrid');
+  const featuredGrid = element('featuredCompetitionGrid');
   const message = element('competitionMessage');
 
-  if (!grid) return;
+  if (grid) {
+    grid.replaceChildren(
+      makeParagraph('Loading competitions…')
+    );
+  }
 
-  grid.replaceChildren(
-    makeParagraph('Loading competitions…')
-  );
+  if (featuredGrid) {
+    featuredGrid.replaceChildren(
+      makeParagraph('Loading featured competitions…')
+    );
+  }
 
-  if (message) message.textContent = '';
+  if (message) {
+    message.textContent = '';
+  }
 
   try {
     const { data, error } = await supabaseClient
       .from('competitions')
       .select(
-  'id, name, prize_description, entry_price_cents, closes_at, product_image_url'
-)
+        'id, name, prize_description, entry_price_cents, closes_at, product_image_url, is_featured, created_at'
+      )
       .eq('status', 'open')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    grid.replaceChildren();
+    const allCompetitions = data || [];
 
-    if (!data?.length) {
-      grid.appendChild(
-        makeParagraph(
-          'There are no open competitions at the moment. Please check back soon.'
-        )
-      );
+    // Every open competition appears on the Competitions page.
+    if (grid) {
+      grid.replaceChildren();
 
-      populateReferralCompetitionSelect([]);
-      return;
+      if (!allCompetitions.length) {
+        grid.appendChild(
+          makeParagraph(
+            'There are no open competitions at the moment. Please check back soon.'
+          )
+        );
+      } else {
+        allCompetitions.forEach((competition) => {
+          grid.appendChild(
+            createCompetitionCard(competition)
+          );
+        });
+      }
     }
 
-    data.forEach((competition) => {
-      const card = document.createElement('article');
-      card.className = 'card';
+    // Only manually featured open competitions appear on Home.
+    // The maximum number displayed is three.
+    if (featuredGrid) {
+      featuredGrid.replaceChildren();
 
-      const visual = document.createElement('div');
-visual.className = 'visual';
+      const featuredCompetitions = allCompetitions
+        .filter(competition => competition.is_featured === true)
+        .slice(0, 3);
 
-if (competition.product_image_url) {
-  const image = document.createElement('img');
-
-  image.src = competition.product_image_url;
-  image.alt = `Image of ${competition.name}`;
-
-  image.style.width = '100%';
-  image.style.height = '100%';
-  image.style.objectFit = 'contain';
-  image.style.display = 'block';
-
-  image.addEventListener('error', () => {
-    visual.textContent = '🎁';
-    visual.setAttribute('aria-hidden', 'true');
-  });
-
-  visual.appendChild(image);
-} else {
-  visual.textContent = '🎁';
-  visual.setAttribute('aria-hidden', 'true');
-}
-
-      const pad = document.createElement('div');
-      pad.className = 'pad';
-
-      const pill = document.createElement('span');
-      pill.className = 'pill';
-      pill.textContent = 'OPEN COMPETITION';
-
-      const title = document.createElement('h3');
-      title.textContent = competition.name;
-
-      const description = document.createElement('p');
-      description.textContent =
-        competition.prize_description ||
-        'See the competition rules for details.';
-
-      const row = document.createElement('div');
-      row.className = 'row';
-
-      const price = document.createElement('b');
-      price.textContent = formatRand(
-        competition.entry_price_cents
-      );
-
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = 'Enter';
-
-      button.addEventListener('click', () => {
-        startCompetitionGame(
-          String(competition.id),
-          competition.name || 'Competition',
-          'competition'
+      if (!featuredCompetitions.length) {
+        featuredGrid.appendChild(
+          makeParagraph(
+            'Featured competitions will appear here soon. Please visit our Competitions page to see all available competitions.'
+          )
         );
-      });
+      } else {
+        featuredCompetitions.forEach((competition) => {
+          featuredGrid.appendChild(
+            createCompetitionCard(competition)
+          );
+        });
+      }
+    }
 
-      row.append(price, button);
-      pad.append(pill, title, description, row);
-      card.append(visual, pad);
-      grid.appendChild(card);
-    });
-
-    populateReferralCompetitionSelect(data);
+    // Keep the referral competition dropdown populated
+    // with every open competition, not only featured ones.
+    populateReferralCompetitionSelect(allCompetitions);
 
   } catch (error) {
     console.error('Could not load competitions:', error);
 
-    grid.replaceChildren(
-      makeParagraph(
-        'We could not load competitions. Please refresh the page and try again.'
-      )
-    );
+    if (grid) {
+      grid.replaceChildren(
+        makeParagraph(
+          'We could not load competitions. Please refresh the page and try again.'
+        )
+      );
+    }
+
+    if (featuredGrid) {
+      featuredGrid.replaceChildren(
+        makeParagraph(
+          'Featured competitions could not be loaded. Please refresh the page and try again.'
+        )
+      );
+    }
+
+    if (message) {
+      message.textContent =
+        'We could not load competitions. Please refresh the page and try again.';
+    }
   }
 }
 
