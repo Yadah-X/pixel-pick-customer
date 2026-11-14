@@ -12,13 +12,14 @@
 </head>
 <body>
 
+  <!-- HEADER AND NAVIGATION -->
   <header class="nav">
     <a class="logo" href="#home" aria-label="Pixel Pick home"
-   draggable="false"
-   oncontextmenu="return false;"
-   style="-webkit-touch-callout:none; user-select:none; -webkit-user-select:none;">
-  PIXEL<span>PICK</span>
-</a>
+       draggable="false"
+       oncontextmenu="return false;"
+       style="-webkit-touch-callout:none; user-select:none; -webkit-user-select:none;">
+      PIXEL<span>PICK</span>
+    </a>
 
     <button class="menu-toggle outline" id="menuToggle"
       type="button" aria-label="Open navigation menu"
@@ -35,8 +36,8 @@
       <a href="#entries" data-page="entries">History</a>
       <a href="#referral" data-page="referral">Refer a Friend</a>
       <a href="#accountArea" data-page="accountArea">My Account</a>
-<a href="#howToPlay" data-page="howToPlay">How to Play</a>
-<a href="#support" data-page="support">Customer Support</a>
+      <a href="#howToPlay" data-page="howToPlay">How to Play</a>
+      <a href="#support" data-page="support">Customer Support</a>
 
       <div class="menu-account">
         <button class="menu-sign-in" id="accountHeaderButton"
@@ -54,9 +55,10 @@
 
   <main>
 
-    <!-- HOME -->
+    <!-- HOME PAGE -->
     <div id="homePage">
 
+      <!-- HOME HERO -->
       <section id="homeHero" class="hero">
         <div>
           <p class="eyebrow">SOUTH AFRICAN SKILL COMPETITIONS</p>
@@ -84,19 +86,36 @@
         </article>
       </section>
 
-      <!-- COMPETITIONS -->
-      <section id="competitions" class="section">
-        <p class="eyebrow">AVAILABLE COMPETITIONS</p>
+      <!-- HOME FEATURED COMPETITIONS -->
+      <section id="homeFeaturedCompetitions" class="section">
+        <p class="eyebrow">HANDPICKED FOR YOU</p>
         <h2>Featured competitions</h2>
 
-        <div class="grid" id="competitionGrid" aria-live="polite">
-          <p>Loading competitions...</p>
+        <div class="grid" id="featuredCompetitionGrid" aria-live="polite">
+          <p>Loading featured competitions...</p>
         </div>
 
-        <p id="competitionMessage" role="status" aria-live="polite"></p>
+        <a class="cta" href="#competitions" data-page="competitions">
+          View all competitions
+        </a>
       </section>
 
     </div>
+    <!-- END HOME PAGE -->
+
+
+    <!-- ALL COMPETITIONS PAGE -->
+    <section id="competitions" class="section page-hidden">
+      <p class="eyebrow">AVAILABLE COMPETITIONS</p>
+      <h2>All competitions</h2>
+
+      <div class="grid" id="competitionGrid" aria-live="polite">
+        <p>Loading competitions...</p>
+      </div>
+
+      <p id="competitionMessage" role="status" aria-live="polite"></p>
+    </section>
+
 
     <!-- MY CHALLENGES AND ENTRIES -->
     <section id="entries" class="section account page-hidden">
@@ -164,6 +183,7 @@
       </div>
     </section>
 
+
     <!-- MY ACCOUNT AND PERSONAL DETAILS -->
     <section id="accountArea" class="section account page-hidden">
       <p class="eyebrow">ACCOUNT SETTINGS</p>
@@ -183,143 +203,142 @@
         Sign out
       </button>
 
-      
-<div id="personalDetailsPanel" class="card hidden">
-  <h3>Personal Details</h3>
-  <p>View your registered information and update your contact details.</p>
+      <div id="personalDetailsPanel" class="card hidden">
+        <h3>Personal Details</h3>
+        <p>View your registered information and update your contact details.</p>
 
-  <p id="emailVerificationStatus" role="status" aria-live="polite">
-    Email verification status will appear here.
-  </p>
+        <p id="emailVerificationStatus" role="status" aria-live="polite">
+          Email verification status will appear here.
+        </p>
 
-  <p>
-    <strong>Account created:</strong>
-    <span id="accountCreatedDate">Loading...</span>
-  </p>
+        <p>
+          <strong>Account created:</strong>
+          <span id="accountCreatedDate">Loading...</span>
+        </p>
 
-  <form id="personalDetailsForm">
+        <form id="personalDetailsForm">
 
-    <label for="profileFirstName">First name</label>
-    <input
-      id="profileFirstName"
-      type="text"
-      autocomplete="given-name"
-      maxlength="80"
-      readonly
-    >
+          <label for="profileFirstName">First name</label>
+          <input
+            id="profileFirstName"
+            type="text"
+            autocomplete="given-name"
+            maxlength="80"
+            readonly
+          >
 
-    <label for="profileLastName">Surname</label>
-    <input
-      id="profileLastName"
-      type="text"
-      autocomplete="family-name"
-      maxlength="80"
-      readonly
-    >
+          <label for="profileLastName">Surname</label>
+          <input
+            id="profileLastName"
+            type="text"
+            autocomplete="family-name"
+            maxlength="80"
+            readonly
+          >
 
-    <label for="profilePhone">Phone number (optional)</label>
-    <input
-      id="profilePhone"
-      type="tel"
-      autocomplete="tel"
-      maxlength="30"
-      placeholder="Enter your phone number"
-      readonly
-    >
+          <label for="profilePhone">Phone number (optional)</label>
+          <input
+            id="profilePhone"
+            type="tel"
+            autocomplete="tel"
+            maxlength="30"
+            placeholder="Enter your phone number"
+            readonly
+          >
 
-    <small>
-      Your phone number is optional and is not used for account
-      verification. Pixel Pick verifies accounts through email only.
-    </small>
+          <small>
+            Your phone number is optional and is not used for account
+            verification. Pixel Pick verifies accounts through email only.
+          </small>
 
-    <label for="profileEmail">Email address</label>
-    <input
-      id="profileEmail"
-      type="email"
-      autocomplete="email"
-      readonly
-      required
-    >
+          <label for="profileEmail">Email address</label>
+          <input
+            id="profileEmail"
+            type="email"
+            autocomplete="email"
+            readonly
+            required
+          >
 
-    <small>
-      Changing your email address may require confirmation through
-      your email inbox before the change takes effect.
-    </small>
+          <small>
+            Changing your email address may require confirmation through
+            your email inbox before the change takes effect.
+          </small>
 
-    <button
-      class="cta full"
-      id="editPersonalDetailsButton"
-      type="button"
-    >
-      Edit
-    </button>
+          <button
+            class="cta full"
+            id="editPersonalDetailsButton"
+            type="button"
+          >
+            Edit
+          </button>
 
-    <button
-      class="cta full hidden"
-      id="savePersonalDetailsButton"
-      type="submit"
-    >
-      Save Changes
-    </button>
+          <button
+            class="cta full hidden"
+            id="savePersonalDetailsButton"
+            type="submit"
+          >
+            Save Changes
+          </button>
 
-    <button
-      class="outline full hidden"
-      id="cancelPersonalDetailsButton"
-      type="button"
-    >
-      Cancel
-    </button>
+          <button
+            class="outline full hidden"
+            id="cancelPersonalDetailsButton"
+            type="button"
+          >
+            Cancel
+          </button>
 
-    <p
-      id="personalDetailsMessage"
-      role="status"
-      aria-live="polite"
-    ></p>
+          <p
+            id="personalDetailsMessage"
+            role="status"
+            aria-live="polite"
+          ></p>
 
-  </form>
+        </form>
 
-  <hr>
+        <hr>
 
-  <h3>Change Password</h3>
-  <p>Choose a new password for your account.</p>
+        <h3>Change Password</h3>
+        <p>Choose a new password for your account.</p>
 
-  <form id="changePasswordForm">
+        <form id="changePasswordForm">
 
-    <label for="newAccountPassword">New password</label>
-    <input
-      id="newAccountPassword"
-      type="password"
-      autocomplete="new-password"
-      minlength="8"
-      required
-    >
+          <label for="newAccountPassword">New password</label>
+          <input
+            id="newAccountPassword"
+            type="password"
+            autocomplete="new-password"
+            minlength="8"
+            required
+          >
 
-    <label for="confirmNewAccountPassword">Confirm new password</label>
-    <input
-      id="confirmNewAccountPassword"
-      type="password"
-      autocomplete="new-password"
-      minlength="8"
-      required
-    >
+          <label for="confirmNewAccountPassword">Confirm new password</label>
+          <input
+            id="confirmNewAccountPassword"
+            type="password"
+            autocomplete="new-password"
+            minlength="8"
+            required
+          >
 
-    <button
-      class="cta full"
-      id="changePasswordButton"
-      type="submit"
-    >
-      Update password
-    </button>
+          <button
+            class="cta full"
+            id="changePasswordButton"
+            type="submit"
+          >
+            Update password
+          </button>
 
-    <p
-      id="changePasswordMessage"
-      role="status"
-      aria-live="polite"
-    ></p>
+          <p
+            id="changePasswordMessage"
+            role="status"
+            aria-live="polite"
+          ></p>
 
-  </form>
-</div>
-</section>
+        </form>
+      </div>
+    </section>
 
 
     <!-- REFERRALS -->
@@ -432,7 +451,8 @@
         <p><strong>Amount charged: R0.00</strong></p>
 
         <p>
-          Claiming a free referral entry does not require an entry fee. Each reward can only be redeemed once.
+          Claiming a free referral entry does not require an entry fee.
+          Each reward can only be redeemed once.
         </p>
 
         <hr>
@@ -443,131 +463,132 @@
         </p>
       </div>
     </section>
-    
-<!-- HOW TO PLAY -->
-<section id="howToPlay" class="section page-hidden">
 
-  <div class="section-heading">
-    <span class="eyebrow">YOUR GUIDE TO PIXEL PICK</span>
-    <h2>How to Play</h2>
-    <p>
-      Ready to compete? Here's everything you need to know
-      about entering a Pixel Pick competition and how our
-      winners are determined.
-    </p>
-  </div>
 
-  <div class="card support-card">
+    <!-- HOW TO PLAY -->
+    <section id="howToPlay" class="section page-hidden">
 
-    <h3>1. Choose a Competition</h3>
-    <p>
-      Browse our available competitions and select the prize
-      you would like to compete for. Each competition displays
-      its prize details and entry fee.
-    </p>
+      <div class="section-heading">
+        <span class="eyebrow">YOUR GUIDE TO PIXEL PICK</span>
+        <h2>How to Play</h2>
+        <p>
+          Ready to compete? Here's everything you need to know
+          about entering a Pixel Pick competition and how our
+          winners are determined.
+        </p>
+      </div>
 
-    <hr>
+      <div class="card support-card">
 
-    <h3>2. Register or Sign In</h3>
-    <p>
-      Create a Pixel Pick account or sign in to your existing
-      account before entering a competition.
-    </p>
-    <p>
-      Participants must be South African residents aged
-      18 years or older.
-    </p>
+        <h3>1. Choose a Competition</h3>
+        <p>
+          Browse our available competitions and select the prize
+          you would like to compete for. Each competition displays
+          its prize details and entry fee.
+        </p>
 
-    <hr>
+        <hr>
 
-    <h3>3. Complete the Skill Challenge</h3>
-    <p>
-      Each competition entry gives you one attempt at a
-      visual skill challenge consisting of 10 tasks.
-    </p>
-    <ul>
-      <li>Study each visual task carefully.</li>
-      <li>Select the answer you believe is correct.</li>
-      <li>Answer each task only once.</li>
-      <li>Complete all 10 tasks within the allocated time.</li>
-    </ul>
-    <p>
-      Once your attempt has been submitted, you cannot replay
-      that attempt to improve your result.
-    </p>
+        <h3>2. Register or Sign In</h3>
+        <p>
+          Create a Pixel Pick account or sign in to your existing
+          account before entering a competition.
+        </p>
+        <p>
+          Participants must be South African residents aged
+          18 years or older.
+        </p>
 
-    <hr>
+        <hr>
 
-    <h3>4. Complete Your Entry</h3>
-    <p>
-      After completing the skill challenge, follow the
-      instructions to complete your entry.
-    </p>
-    <p>
-      Only successfully paid entries qualify for the
-      competition. Unpaid or failed payments do not qualify.
-    </p>
+        <h3>3. Complete the Skill Challenge</h3>
+        <p>
+          Each competition entry gives you one attempt at a
+          visual skill challenge consisting of 10 tasks.
+        </p>
+        <ul>
+          <li>Study each visual task carefully.</li>
+          <li>Select the answer you believe is correct.</li>
+          <li>Answer each task only once.</li>
+          <li>Complete all 10 tasks within the allocated time.</li>
+        </ul>
+        <p>
+          Once your attempt has been submitted, you cannot replay
+          that attempt to improve your result.
+        </p>
 
-    <hr>
+        <hr>
 
-    <h3>5. How the Winner Is Determined</h3>
-    <p>
-      Winners are determined according to the following
-      criteria, in this order:
-    </p>
-    <ol>
-      <li>
-        <strong>Highest skill score:</strong>
-        The participant with the highest overall score wins.
-      </li>
-      <li>
-        <strong>Highest accuracy:</strong>
-        If participants have equal scores, the participant
-        with the highest accuracy takes priority.
-      </li>
-      <li>
-        <strong>First to complete:</strong>
-        If both skill score and accuracy are equal, the
-        first participant to complete the challenge takes
-        priority.
-      </li>
-    </ol>
+        <h3>4. Complete Your Entry</h3>
+        <p>
+          After completing the skill challenge, follow the
+          instructions to complete your entry.
+        </p>
+        <p>
+          Only successfully paid entries qualify for the
+          competition. Unpaid or failed payments do not qualify.
+        </p>
 
-    <p>
-      Pixel Pick will review the results and approve the
-      winner before announcing them.
-    </p>
+        <hr>
 
-    <hr>
+        <h3>5. How the Winner Is Determined</h3>
+        <p>
+          Winners are determined according to the following
+          criteria, in this order:
+        </p>
+        <ol>
+          <li>
+            <strong>Highest skill score:</strong>
+            The participant with the highest overall score wins.
+          </li>
+          <li>
+            <strong>Highest accuracy:</strong>
+            If participants have equal scores, the participant
+            with the highest accuracy takes priority.
+          </li>
+          <li>
+            <strong>First to complete:</strong>
+            If both skill score and accuracy are equal, the
+            first participant to complete the challenge takes
+            priority.
+          </li>
+        </ol>
 
-    <h3>6. Results and Winner Announcement</h3>
-    <p>
-      Your challenge results will be securely recorded.
-      Completing a challenge does not automatically mean
-      that you have won.
-    </p>
-    <p>
-      The winner will be confirmed after the competition
-      results have been reviewed.
-    </p>
+        <p>
+          Pixel Pick will review the results and approve the
+          winner before announcing them.
+        </p>
 
-    <hr>
+        <hr>
 
-    <h3>7. Important Information</h3>
-    <ul>
-      <li>Each entry is a separate competition attempt.</li>
-      <li>Only eligible participants may enter.</li>
-      <li>Only qualifying entries are considered when determining a winner.</li>
-      <li>All participants must follow the Pixel Pick Terms and Conditions.</li>
-    </ul>
+        <h3>6. Results and Winner Announcement</h3>
+        <p>
+          Your challenge results will be securely recorded.
+          Completing a challenge does not automatically mean
+          that you have won.
+        </p>
+        <p>
+          The winner will be confirmed after the competition
+          results have been reviewed.
+        </p>
 
-    <p>
-      Good luck, and remember:
-      <strong>Skill. Precision. Prizes.</strong>
-    </p>
+        <hr>
 
-  </div>
-</section>
+        <h3>7. Important Information</h3>
+        <ul>
+          <li>Each entry is a separate competition attempt.</li>
+          <li>Only eligible participants may enter.</li>
+          <li>Only qualifying entries are considered when determining a winner.</li>
+          <li>All participants must follow the Pixel Pick Terms and Conditions.</li>
+        </ul>
+
+        <p>
+          Good luck, and remember:
+          <strong>Skill. Precision. Prizes.</strong>
+        </p>
+
+      </div>
+    </section>
 
 
     <!-- CUSTOMER SUPPORT -->
@@ -616,7 +637,8 @@
 
   </main>
 
-  <!-- TEN-TASK COMPETITION GAME -->
+
+  <!-- TEN-TASK VISUAL COMPETITION GAME -->
   <div id="competitionGame" class="modal game-modal hidden">
     <div class="modal-box game-modal-box"
       role="dialog"
@@ -750,6 +772,7 @@
     </div>
   </div>
 
+
   <!-- SIGN-IN AND REGISTRATION MODAL -->
   <div id="accountModal" class="modal hidden">
     <div class="modal-box" role="dialog" aria-modal="true"
@@ -804,47 +827,49 @@
 
       </form>
 
-<!-- PASSWORD RESET FORM -->
-<form id="passwordResetForm" class="hidden">
 
-  <p>
-    Enter your new password below.
-  </p>
+      <!-- PASSWORD RESET FORM -->
+      <form id="passwordResetForm" class="hidden">
 
-  <label for="newPassword">New password</label>
-  <input
-    id="newPassword"
-    name="new_password"
-    type="password"
-    autocomplete="new-password"
-    minlength="8"
-    required
-  >
+        <p>
+          Enter your new password below.
+        </p>
 
-  <label for="confirmNewPassword">Confirm new password</label>
-  <input
-    id="confirmNewPassword"
-    name="confirm_new_password"
-    type="password"
-    autocomplete="new-password"
-    minlength="8"
-    required
-  >
+        <label for="newPassword">New password</label>
+        <input
+          id="newPassword"
+          name="new_password"
+          type="password"
+          autocomplete="new-password"
+          minlength="8"
+          required
+        >
 
-  <button
-    class="cta full"
-    id="saveNewPasswordButton"
-    type="submit"
-  >
-    Save new password
-  </button>
+        <label for="confirmNewPassword">Confirm new password</label>
+        <input
+          id="confirmNewPassword"
+          name="confirm_new_password"
+          type="password"
+          autocomplete="new-password"
+          minlength="8"
+          required
+        >
 
-  <p id="passwordResetMessage"
-     role="status"
-     aria-live="polite"></p>
+        <button
+          class="cta full"
+          id="saveNewPasswordButton"
+          type="submit"
+        >
+          Save new password
+        </button>
 
-</form>
-<!-- END PASSWORD RESET FORM -->
+        <p id="passwordResetMessage"
+           role="status"
+           aria-live="polite"></p>
+
+      </form>
+      <!-- END PASSWORD RESET FORM -->
+
 
       <button class="outline" id="accountModeButton" type="button"
         onclick="toggleAccountMode()">
@@ -861,60 +886,16 @@
     </div>
   </div>
 
-  <!-- LEGACY SKILL CHALLENGE MODAL -->
-  <!-- Retained for the existing referral reward process. -->
-  <div id="modal" class="modal hidden">
-    <div class="modal-box" role="dialog" aria-modal="true"
-      aria-labelledby="challengeTitle">
 
-      <button class="close" type="button" onclick="closeChallenge()"
-        aria-label="Close challenge">×</button>
+  <!-- OLD X/Y SKILL CHALLENGE MODAL REMOVED -->
 
-      <p class="eyebrow">SKILL CHALLENGE</p>
-      <h2 id="challengeTitle">Pick the target pixel</h2>
 
-      <p>
-        Click the board to select coordinates, then submit your answer.
-      </p>
-
-      <div class="board" id="board" role="img"
-        aria-label="Skill challenge board">
-        <div class="target">●</div>
-      </div>
-
-      <div class="coords">
-
-        <label for="x">
-          X
-          <input id="x" type="number" min="0" max="100" value="50">
-        </label>
-
-        <label for="y">
-          Y
-          <input id="y" type="number" min="0" max="100" value="50">
-        </label>
-
-      </div>
-
-      <button class="cta full" id="submitChallengeButton"
-        type="button" onclick="submitEntry()">
-        Submit answer
-      </button>
-
-      <p id="challengeMessage" role="status" aria-live="polite"></p>
-
-      <small>
-        Referral reward claims and entry confirmation depend on
-        server verification.
-      </small>
-
-    </div>
-  </div>
-
+  <!-- FOOTER -->
   <footer>
     © 2026 Pixel Pick · Winners to be selected on the 15th of every month.
   </footer>
 
+  <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
 
