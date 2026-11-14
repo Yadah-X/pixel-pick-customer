@@ -483,6 +483,7 @@ function setupInactivityLogout() {
   });
 }
 
+
 /* =========================================================
    PAGE NAVIGATION
    ========================================================= */
@@ -499,12 +500,12 @@ function setupPageNavigation() {
   }
 
   const pages = [
-  'entries',
-  'referral',
-  'accountArea',
-  'howToPlay',
-  'support'
-];
+    'entries',
+    'referral',
+    'accountArea',
+    'howToPlay',
+    'support'
+  ];
 
   function showPage(page, updateAddress = true) {
     const validPages = [
@@ -525,10 +526,13 @@ function setupPageNavigation() {
     });
 
     if (page === 'home') {
+      // Home displays only the Home page and its featured competitions.
       homePage.classList.remove('page-hidden');
-      competitions.classList.remove('page-hidden');
+
     } else if (page === 'competitions') {
+      // The Competitions page displays all open competitions.
       competitions.classList.remove('page-hidden');
+
     } else {
       element(page)?.classList.remove('page-hidden');
     }
