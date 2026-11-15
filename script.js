@@ -10,7 +10,7 @@ const SUPABASE_URL = 'https://cxhclxtbtrsyfigqleeg.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY =
   'sb_publishable_N4pRAlpCzjTEoKR7TCYOEA_Irj7mCrv';
 
-const SITE_URL = 'https://pixel-pick-customer.onrender.com';
+const SITE_URL = 'https://pixelpickcustomer.co.za';
 const TURNSTILE_SITE_KEY = '0x4AAAAAAF-RWWgVowvnilq4';
 
 let turnstileWidgetId = null;
