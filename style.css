@@ -1047,3 +1047,75 @@ footer {
   -webkit-user-drag: none;
   user-drag: none;
 }
+
+/* =========================================================
+   PIXEL PICK — CUSTOMER INFORMATION FOOTER
+   ========================================================= */
+
+.site-footer {
+  background: #101014;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 40px 20px 20px;
+  margin-top: 40px;
+  text-align: center;
+}
+
+.footer-brand .logo {
+  display: inline-block;
+  font-size: 24px;
+  font-weight: 800;
+  text-decoration: none;
+  color: #ffffff;
+}
+
+.footer-brand .logo span {
+  color: #f5b942;
+}
+
+.footer-brand p {
+  color: #b8b8c2;
+  margin: 8px 0 30px;
+  font-size: 14px;
+}
+
+.footer-customer-information h3 {
+  color: #f5b942;
+  font-size: 13px;
+  letter-spacing: 2px;
+  margin-bottom: 18px;
+}
+
+.footer-policy-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 24px;
+  margin-bottom: 30px;
+}
+
+.footer-policy-links span {
+  color: #e2e2e8;
+  font-size: 14px;
+}
+
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
+  padding-top: 18px;
+  color: #9999a5;
+  font-size: 12px;
+}
+
+.footer-bottom p {
+  margin: 6px 0;
+}
+
+@media (max-width: 600px) {
+  .site-footer {
+    padding: 32px 16px 18px;
+  }
+
+  .footer-policy-links {
+    flex-direction: column;
+    gap: 14px;
+  }
+}
