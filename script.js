@@ -1666,7 +1666,7 @@ async function loadMyReferralDashboard(user) {
 
       rewardSelect.disabled = availableRewards.length === 0;
     }
-
+setHidden('referralClaimSection', false);
     setReferralMessage(
       'Your personal referral link is ready to share.'
     );
