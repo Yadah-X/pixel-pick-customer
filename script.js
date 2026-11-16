@@ -1,3 +1,4 @@
+
 /* =========================================================
    PIXEL PICK — CUSTOMER WEBSITE
    Accounts, personal details, navigation, competitions,
@@ -480,159 +481,6 @@ function setupInactivityLogout() {
       lastActivityAt = timestamp;
       scheduleIdleLogout();
     }
-  });
-}
-
-
-
-/* =========================================================
-   AUTOMATIC LOGOUT AFTER 15 MINUTES
-   ========================================================= */
-
-let idleLogoutTimer = null;
-let idleLogoutInProgress = false;
-let lastActivityAt = Date.now();
-let lastActivitySavedAt = 0;
-
-const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
-const ACTIVITY_STORAGE_KEY = 'pixelPickLastActivity';
-const CHECKOUT_STORAGE_KEY = 'pixelPickCheckoutInProgress';
-
-function isPayFastCheckoutInProgress() {
-  return sessionStorage.getItem(CHECKOUT_STORAGE_KEY) === 'true';
-}
-
-function getLastActivityTime() {
-  const stored = Number(localStorage.getItem(ACTIVITY_STORAGE_KEY));
-
-  return Number.isFinite(stored) && stored > 0
-    ? stored
-    : Date.now();
-}
-
-function saveActivityTime(force = false) {
-  if (isPayFastCheckoutInProgress()) return;
-
-  const now = Date.now();
-
-  lastActivityAt = now;
-
-  if (force || now - lastActivitySavedAt >= 5000) {
-    localStorage.setItem(ACTIVITY_STORAGE_KEY, String(now));
-    lastActivitySavedAt = now;
-  }
-
-  scheduleIdleLogout();
-}
-
-function stopIdleLogout() {
-  if (idleLogoutTimer) {
-    clearTimeout(idleLogoutTimer);
-    idleLogoutTimer = null;
-  }
-}
-
-function scheduleIdleLogout() {
-  if (idleLogoutInProgress) return;
-
-  if (idleLogoutTimer) {
-    clearTimeout(idleLogoutTimer);
-    idleLogoutTimer = null;
-  }
-
-  if (isPayFastCheckoutInProgress()) return;
-
-  const elapsed = Date.now() - lastActivityAt;
-  const remaining = IDLE_TIMEOUT_MS - elapsed;
-
-  idleLogoutTimer = setTimeout(
-    checkIdleLogout,
-    Math.max(remaining, 0)
-  );
-}
-
-async function checkIdleLogout() {
-  if (idleLogoutInProgress) return;
-
-  if (isPayFastCheckoutInProgress()) {
-    idleLogoutTimer = null;
-    return;
-  }
-
-  const latestActivity = getLastActivityTime();
-
-  lastActivityAt = latestActivity;
-
-  const elapsed = Date.now() - latestActivity;
-
-  if (elapsed < IDLE_TIMEOUT_MS) {
-    scheduleIdleLogout();
-    return;
-  }
-
-  idleLogoutInProgress = true;
-
-  try {
-    await signOutAccount('inactivity');
-  } finally {
-    idleLogoutInProgress = false;
-  }
-}
-
-function startIdleLogout(event) {
-  if (event === 'SIGNED_IN') {
-    saveActivityTime(true);
-    return;
-  }
-
-  if (!localStorage.getItem(ACTIVITY_STORAGE_KEY)) {
-    saveActivityTime(true);
-    return;
-  }
-
-  lastActivityAt = getLastActivityTime();
-  scheduleIdleLogout();
-}
-
-function setupInactivityLogout() {
-  const activityEvents = [
-    'pointerdown',
-    'pointermove',
-    'keydown',
-    'scroll',
-    'touchstart',
-    'click'
-  ];
-
-  activityEvents.forEach(eventName => {
-    document.addEventListener(eventName, () => {
-      if (idleLogoutInProgress) return;
-      if (isPayFastCheckoutInProgress()) return;
-
-      saveActivityTime();
-    }, { passive: true });
-  });
-
-  window.addEventListener('storage', event => {
-    if (event.key !== ACTIVITY_STORAGE_KEY || !event.newValue) {
-      return;
-    }
-
-    const timestamp = Number(event.newValue);
-
-    if (!Number.isFinite(timestamp) || timestamp <= 0) {
-      return;
-    }
-
-    lastActivityAt = timestamp;
-    scheduleIdleLogout();
-  });
-
-  window.addEventListener('pageshow', () => {
-    if (isPayFastCheckoutInProgress()) return;
-
-    lastActivityAt = getLastActivityTime();
-    scheduleIdleLogout();
   });
 }
 
@@ -1960,92 +1808,6 @@ element('claimReferralRewardButton')
       'Free reward claims are not available yet. Your reward remains in your account; no payment has been taken.'
     );
   });
-
-
-/* =========================================================
-   ACCOUNT INTERFACE
-   ========================================================= */
-
-function updateAccountInterface(session) {
-  const signedIn = Boolean(session?.user);
-  const email = session?.user?.email || '';
-
-  setHidden('accountHeaderButton', signedIn);
-  setHidden('headerSignOutButton', !signedIn);
-
-  setHidden('accountSectionButton', false);
-  setHidden('accountSectionSignOutButton', !signedIn);
-
-  setText(
-    'accountSectionButton',
-    signedIn ? 'Account settings' : 'Sign in / Register'
-  );
-
-  setText('accountHeaderButton', 'Sign in / Register');
-  setText('headerSignOutButton', 'Sign out');
-  setText('accountSectionSignOutButton', 'Sign out');
-  setText('signOutButton', 'Sign out');
-
-  setHidden('signOutButton', !signedIn);
-  setHidden('accountModeButton', signedIn);
-
-  setHidden(
-    'forgotPasswordButton',
-    signedIn || accountMode !== 'signin'
-  );
-
-  const submit = document.querySelector(
-    '#accountForm button[type="submit"]'
-  );
-
-  const emailInput = element('accountEmail');
-  const passwordInput = element('accountPassword');
-
-  if (submit) submit.disabled = signedIn;
-  if (emailInput) emailInput.disabled = signedIn;
-  if (passwordInput) passwordInput.disabled = signedIn;
-
-  updateRegistrationFields(signedIn);
-
-  setText(
-    'accountStatus',
-    signedIn
-      ? `Signed in as ${email}.`
-      : 'You are currently signed out.'
-  );
-
-  setText(
-    'entryText',
-    signedIn
-      ? 'Your challenge and entry history will appear below.'
-      : 'Sign in to view your challenge and entry history.'
-  );
-
-  setHidden('historySignInButton', signedIn);
-  setHidden('clearHistoryButton', !signedIn);
-
-  if (!signedIn && submit) {
-    submit.textContent =
-      accountMode === 'signup' ? 'Register' : 'Sign in';
-  }
-
-  renderPersonalDetails(session?.user || null);
-}
-
-async function refreshAccount() {
-  const { data, error } =
-    await supabaseClient.auth.getSession();
-
-  if (error) {
-    console.error('Could not refresh account:', error);
-    return null;
-  }
-
-  updateAccountInterface(data.session);
-
-  return data.session;
-}
-
 /* =========================================================
    REFRESH ACCOUNT AND HISTORY
    ========================================================= */
@@ -2090,8 +1852,6 @@ async function refreshAccount() {
 /* =========================================================
    REGISTRATION AND SIGN-IN
    ========================================================= */
-
-
 
 element('accountForm')?.addEventListener(
   'submit',
@@ -2144,58 +1904,56 @@ element('accountForm')?.addEventListener(
           );
         }
 
-        
-if (phone.length > 30) {
-  throw new Error(
-    'Your phone number must be no longer than 30 characters.'
-  );
-}
+        if (phone.length > 30) {
+          throw new Error(
+            'Your phone number must be no longer than 30 characters.'
+          );
+        }
 
-// Convert the phone number to South African +27 format.
-let normalizedPhone = '';
+        // Convert the phone number to South African +27 format.
+        let normalizedPhone = '';
 
-if (phone) {
-  const digits = phone.replace(/\D/g, '');
+        if (phone) {
+          const digits = phone.replace(/\D/g, '');
 
-  if (/^0[6-8][0-9]{8}$/.test(digits)) {
-    normalizedPhone = '+27' + digits.substring(1);
+          if (/^0[6-8][0-9]{8}$/.test(digits)) {
+            normalizedPhone = '+27' + digits.substring(1);
 
-  } else if (/^27[6-8][0-9]{8}$/.test(digits)) {
-    normalizedPhone = '+' + digits;
+          } else if (/^27[6-8][0-9]{8}$/.test(digits)) {
+            normalizedPhone = '+' + digits;
 
-  } else if (/^\+27[6-8][0-9]{8}$/.test(phone)) {
-    normalizedPhone = phone;
+          } else if (/^\+27[6-8][0-9]{8}$/.test(phone)) {
+            normalizedPhone = phone;
 
-  } else {
-    throw new Error(
-      'Please enter a valid South African mobile number, for example 0682549716 or +27682549716.'
-    );
-  }
-}
+          } else {
+            throw new Error(
+              'Please enter a valid South African mobile number, for example 0682549716 or +27682549716.'
+            );
+          }
+        }
 
-// Check whether this cellphone number is already registered.
-if (normalizedPhone) {
-  const { data: phoneAvailable, error: phoneCheckError } =
-    await supabaseClient.rpc(
-      'is_phone_number_available',
-      {
-        p_phone: normalizedPhone
-      }
-    );
+        // Check whether this cellphone number is already registered.
+        if (normalizedPhone) {
+          const { data: phoneAvailable, error: phoneCheckError } =
+            await supabaseClient.rpc(
+              'is_phone_number_available',
+              {
+                p_phone: normalizedPhone
+              }
+            );
 
-  if (phoneCheckError) {
-    throw new Error(
-      'We could not verify your cellphone number. Please try again.'
-    );
-  }
+          if (phoneCheckError) {
+            throw new Error(
+              'We could not verify your cellphone number. Please try again.'
+            );
+          }
 
-  if (phoneAvailable !== true) {
-    throw new Error(
-      'This cellphone number is already registered to another Pixel Pick account. Please use a different number.'
-    );
-  }
-}
-
+          if (phoneAvailable !== true) {
+            throw new Error(
+              'This cellphone number is already registered to another Pixel Pick account. Please use a different number.'
+            );
+          }
+        }
 
         if (password.length < 8) {
           throw new Error(
@@ -2217,10 +1975,10 @@ if (normalizedPhone) {
           sessionStorage.getItem(PENDING_REFERRAL_STORAGE_KEY);
 
         const signupMetadata = {
-  first_name: firstName,
-  last_name: lastName,
-  phone_number: normalizedPhone
-};
+          first_name: firstName,
+          last_name: lastName,
+          phone_number: normalizedPhone
+        };
 
         if (
           pendingReferralCode &&
@@ -2344,8 +2102,6 @@ if (normalizedPhone) {
   }
 );
 
-
-
 /* =========================================================
    SIGN OUT
    ========================================================= */
@@ -2398,7 +2154,7 @@ async function signOutAccount(reason = 'manual') {
 
   showAccountMessage(
     reason === 'inactivity'
-      ? 'You have been signed out because your account was inactive for 15 minutes. Please sign in again.'
+      ? ''
       : 'You have signed out.'
   );
 
@@ -2413,7 +2169,6 @@ async function signOutAccount(reason = 'manual') {
     );
   }
 }
-
 /* =========================================================
    ACCOUNT HISTORY
    ========================================================= */
@@ -2636,7 +2391,6 @@ document.addEventListener('keydown', (event) => {
     closeClearHistoryModal();
   }
 });
-
 /* =========================================================
    TEN-TASK VISUAL GAME
    ========================================================= */
@@ -3013,7 +2767,6 @@ function renderCurrentGameTask() {
 
   startGameplayCountdown();
 }
-
 /* =========================================================
    START OR RESUME A GAME
    ========================================================= */
@@ -3272,11 +3025,6 @@ async function submitGameAnswer(
     gameSubmitting = false;
   }
 }
-
-/* =========================================================
-   PAYMENT COUNTDOWN — 30 MINUTES AFTER COMPLETION
-   ========================================================= */
-
 function startPaymentCountdown() {
   clearGameCountdown();
 
@@ -3497,6 +3245,404 @@ async function beginGamePayment() {
 
 gameElement('gamePayButton')
   ?.addEventListener('click', beginGamePayment);
+
+gameElement('gameCloseButton')
+  ?.addEventListener('click', closeCompetitionGame);
+
+/* =========================================================
+   LEGACY X/Y SKILL CHALLENGE
+   Kept for the existing referral reward process.
+   It is not used for paid competition entries.
+   ========================================================= */
+
+function setChallengeBusy(busy) {
+  challengeBusy = busy;
+
+  const button = element('submitChallengeButton');
+
+  if (button) button.disabled = busy;
+   }
+
+async function openChallenge(
+  competitionId,
+  competitionName = 'Competition'
+) {
+  selectedCompetitionId = competitionId;
+  selectedCompetitionName =
+    competitionName || 'Competition';
+
+  activeChallengeId = null;
+
+  const { data, error } =
+    await supabaseClient.auth.getSession();
+
+  if (error || !data.session) {
+    openAccount();
+
+    showAccountMessage(
+      'Please sign in or register before starting a skill challenge.'
+    );
+
+    return;
+  }
+
+  setText(
+    'challengeTitle',
+    `Skill challenge: ${selectedCompetitionName}`
+  );
+
+  setChallengeMessage('Preparing your challenge…');
+
+  if (element('x')) element('x').value = '';
+  if (element('y')) element('y').value = '';
+
+  modal?.classList.remove('hidden');
+
+  const target = document.querySelector(
+    '#board .target'
+  );
+
+  if (target) {
+    target.style.left = '50%';
+    target.style.top = '50%';
+    target.style.transform =
+      'translate(-50%, -50%)';
+  }
+
+  try {
+    setChallengeBusy(true);
+
+    const result = await callEdgeFunction(
+      VERIFY_CHALLENGE_URL,
+      {
+        action: 'create',
+        competition_id: selectedCompetitionId
+      }
+    );
+
+    const challenge =
+      result.challenge || result;
+
+    if (
+      !challenge.id ||
+      !Number.isInteger(challenge.target_x) ||
+      !Number.isInteger(challenge.target_y)
+    ) {
+      throw new Error(
+        'The challenge service returned an invalid challenge.'
+      );
+    }
+
+    activeChallengeId = challenge.id;
+
+    if (target) {
+      target.style.left =
+        `${challenge.target_x}%`;
+
+      target.style.top =
+        `${challenge.target_y}%`;
+
+      target.style.transform =
+        'translate(-50%, -50%)';
+    }
+
+    setChallengeMessage(
+      'This older X/Y challenge is not used for paid competition entries. Please use the ten-task visual game for paid competitions.'
+    );
+
+  } catch (error) {
+    console.error(
+      'Could not create challenge:',
+      error
+    );
+
+    setText(
+      'challengeTitle',
+      'Could not start challenge'
+    );
+
+    setChallengeMessage(
+      error.message || 'Please try again.'
+    );
+
+  } finally {
+    setChallengeBusy(false);
+  }
+}
+
+function closeChallenge() {
+  modal?.classList.add('hidden');
+
+  activeChallengeId = null;
+  challengeBusy = false;
+}
+
+/*
+ * The old X/Y payment flow is disabled.
+ * Paid competitions must use the ten-task game first.
+ */
+async function submitEntry() {
+  setChallengeMessage(
+    'The old X/Y checkout is no longer used for paid competitions. Please close this window and start the visual competition game.'
+  );
+}
+
+element('board')?.addEventListener(
+  'click',
+  (event) => {
+    const board = event.currentTarget;
+    const rect = board.getBoundingClientRect();
+
+    if (!rect.width || !rect.height) return;
+
+    const x = Math.max(
+      0,
+      Math.min(
+        100,
+        Math.round(
+          ((event.clientX - rect.left) / rect.width) * 100
+        )
+      )
+    );
+
+    const y = Math.max(
+      0,
+      Math.min(
+        100,
+        Math.round(
+          ((event.clientY - rect.top) / rect.height) * 100
+        )
+      )
+    );
+
+    if (element('x')) {
+      element('x').value = x;
+    }
+
+    if (element('y')) {
+      element('y').value = y;
+    }
+  }
+);
+
+/* =========================================================
+   PAYMENT RETURN MESSAGE
+   ========================================================= */
+
+(function handlePaymentReturn() {
+  const params =
+    new URLSearchParams(window.location.search);
+
+  const payment = params.get('payment');
+
+  if (!payment) return;
+
+  // PayFast has returned the customer to the website.
+  // Only the verified PayFast ITN confirms a payment.
+  sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
+
+  gamePaymentBusy = false;
+
+  if (payment === 'returned') {
+    setText(
+      'competitionMessage',
+      'You returned from PayFast. Your payment is not confirmed until Pixel Pick verifies it.'
+    );
+
+  } else if (payment === 'cancelled') {
+    setText(
+      'competitionMessage',
+      'Checkout was cancelled. Your entry is not confirmed. If your payment window is still open, you may continue checkout.'
+    );
+  }
+
+  params.delete('payment');
+  params.delete('order_id');
+
+  const query = params.toString();
+
+  const cleanUrl =
+    window.location.pathname +
+    (query ? `?${query}` : '') +
+    window.location.hash;
+
+  window.history.replaceState(
+    {},
+    document.title,
+    cleanUrl
+  );
+})();
+
+/* =========================================================
+   CUSTOMER SUPPORT
+   ========================================================= */
+
+element('supportForm')?.addEventListener(
+  'submit',
+  async (event) => {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const button = element('supportSubmitButton');
+    const status = element('supportMessageStatus');
+
+    const topic =
+      element('supportTopic')?.value.trim();
+
+    const message =
+      element('supportMessage')?.value.trim();
+
+    if (status) status.textContent = '';
+
+    try {
+      if (button) button.disabled = true;
+
+      const { data, error: authError } =
+        await supabaseClient.auth.getUser();
+
+      if (authError) throw authError;
+
+      const user = data.user;
+
+      if (!user || !user.email) {
+        throw new Error(
+          'Please sign in before submitting a support enquiry.'
+        );
+      }
+
+      if (
+        !topic ||
+        !message ||
+        message.length < 10
+      ) {
+        throw new Error(
+          'Please select a topic and enter a message of at least 10 characters.'
+        );
+      }
+
+      const { error } = await supabaseClient
+        .from('support_requests')
+        .insert({
+          user_id: user.id,
+          email: user.email,
+          topic,
+          message
+        });
+
+      if (error) throw error;
+
+      if (status) {
+        status.textContent =
+          'Thank you! Your support enquiry has been received.';
+      }
+
+      form.reset();
+
+    } catch (error) {
+      console.error(
+        'Support enquiry failed:',
+        error
+      );
+
+      if (status) {
+        status.textContent =
+          error.message ||
+          'Could not submit your enquiry. Please try again.';
+      }
+
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+);
+
+/* =========================================================
+   START THE WEBSITE
+   ========================================================= */
+
+setupPageNavigation();
+setupMenu();
+setupInactivityLogout();
+setupForgotPassword();
+setupPasswordRecovery();
+
+
+supabaseClient.auth.onAuthStateChange(
+  (event, session) => {
+    updateAccountInterface(session);
+
+    const recoveryLink =
+      new URLSearchParams(window.location.search)
+        .get('reset-password') === 'true';
+
+    if (
+      event === 'PASSWORD_RECOVERY' ||
+      (recoveryLink && session?.user)
+    ) {
+      showPasswordRecoveryScreen();
+      return;
+    }
+
+    if (session?.user) {
+      startIdleLogout(event);
+
+      loadMyHistory();
+      loadMyReferralDashboard(session.user);
+
+    } else {
+      stopIdleLogout();
+
+      const history = element('entryHistory');
+
+      if (history) {
+        history.replaceChildren(
+          makeParagraph('Sign in to view your history.')
+        );
+      }
+
+      clearReferralDashboard();
+    }
+  }
+);
+
+loadCompetitions();
+refreshAccount();
+
+
+/* =========================================================
+   ACCOUNT BUTTONS
+   ========================================================= */
+
+element('accountHeaderButton')
+  ?.addEventListener('click', () => {
+    closeNavigationMenu();
+    openAccount();
+  });
+
+element('accountSectionButton')
+  ?.addEventListener('click', () => {
+    closeNavigationMenu();
+    openAccount();
+  });
+
+element('historySignInButton')
+  ?.addEventListener('click', openAccount);
+
+element('headerSignOutButton')
+  ?.addEventListener('click', signOutAccount);
+
+element('accountSectionSignOutButton')
+  ?.addEventListener('click', signOutAccount);
+
+element('signOutButton')
+  ?.addEventListener('click', signOutAccount);
+
+element('closeAccountButton')
+  ?.addEventListener('click', closeAccount);
+
+/* =========================================================
+   END OF PIXEL PICK CUSTOMER SCRIPT
+   ========================================================= */
 
 gameElement('gameCloseButton')
   ?.addEventListener('click', closeCompetitionGame);
@@ -3895,3 +4041,150 @@ element('closeAccountButton')
 /* =========================================================
    END OF PIXEL PICK CUSTOMER SCRIPT
    ========================================================= */
+
+/* =========================================================
+   RESTORED PAGE NAVIGATION
+   ========================================================= */
+
+function setupPageNavigation() {
+  const homePage = element('homePage');
+  const competitions = element('competitions');
+  const main = document.querySelector('main');
+
+  if (!homePage || !competitions || !main) {
+    console.error('Page navigation could not start: a required page container is missing.');
+    return;
+  }
+
+  if (competitions.parentElement !== main) {
+    homePage.insertAdjacentElement('afterend', competitions);
+  }
+
+  const pages = ['entries', 'referral', 'accountArea', 'support'];
+  const validPages = ['home', 'competitions', ...pages];
+
+  function showPage(page, updateAddress = true) {
+    if (!validPages.includes(page)) page = 'home';
+
+    homePage.classList.add('page-hidden');
+    competitions.classList.add('page-hidden');
+
+    pages.forEach((id) => {
+      element(id)?.classList.add('page-hidden');
+    });
+
+    if (page === 'home') {
+      homePage.classList.remove('page-hidden');
+      competitions.classList.remove('page-hidden');
+    } else if (page === 'competitions') {
+      competitions.classList.remove('page-hidden');
+    } else {
+      element(page)?.classList.remove('page-hidden');
+    }
+
+    if (updateAddress) {
+      const newHash = `#${page}`;
+
+      if (window.location.hash !== newHash) {
+        window.history.pushState({ page }, '', newHash);
+      }
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  document.querySelectorAll('a[data-page]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      showPage(link.dataset.page);
+      closeNavigationMenu();
+    });
+  });
+
+  document.querySelectorAll('a[href="#home"]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      showPage('home');
+      closeNavigationMenu();
+    });
+  });
+
+  window.addEventListener('popstate', () => {
+    const page = window.location.hash.replace('#', '') || 'home';
+    showPage(page, false);
+  });
+
+  const initialPage = window.location.hash.replace('#', '') || 'home';
+  showPage(initialPage, false);
+}
+
+
+/* =========================================================
+   RESTORED ACCOUNT INTERFACE
+   ========================================================= */
+
+function updateAccountInterface(session) {
+  const signedIn = Boolean(session?.user);
+  const email = session?.user?.email || '';
+
+  setHidden('accountHeaderButton', signedIn);
+  setHidden('headerSignOutButton', !signedIn);
+
+  setHidden('accountSectionButton', false);
+  setHidden('accountSectionSignOutButton', !signedIn);
+
+  setText(
+    'accountSectionButton',
+    signedIn ? 'Account settings' : 'Sign in / Register'
+  );
+
+  setText('accountHeaderButton', 'Sign in / Register');
+  setText('headerSignOutButton', 'Sign out');
+  setText('accountSectionSignOutButton', 'Sign out');
+  setText('signOutButton', 'Sign out');
+
+  setHidden('signOutButton', !signedIn);
+  setHidden('accountModeButton', signedIn);
+
+  setHidden(
+    'forgotPasswordButton',
+    signedIn || accountMode !== 'signin'
+  );
+
+  const submit = document.querySelector(
+    '#accountForm button[type="submit"]'
+  );
+
+  const emailInput = element('accountEmail');
+  const passwordInput = element('accountPassword');
+
+  if (submit) submit.disabled = signedIn;
+  if (emailInput) emailInput.disabled = signedIn;
+  if (passwordInput) passwordInput.disabled = signedIn;
+
+  updateRegistrationFields(signedIn);
+
+  setText(
+    'accountStatus',
+    signedIn
+      ? `Signed in as ${email}.`
+      : 'You are currently signed out.'
+  );
+
+  setText(
+    'entryText',
+    signedIn
+      ? 'Your challenge and entry history will appear below.'
+      : 'Sign in to view your challenge and entry history.'
+  );
+
+  setHidden('historySignInButton', signedIn);
+  setHidden('clearHistoryButton', !signedIn);
+
+  if (!signedIn && submit) {
+    submit.textContent =
+      accountMode === 'signup' ? 'Register' : 'Sign in';
+  }
+
+  renderPersonalDetails(session?.user || null);
+}
