@@ -3645,6 +3645,7 @@ element('closeAccountButton')
    END OF PIXEL PICK CUSTOMER SCRIPT
    ========================================================= */
 
+
 /* =========================================================
    RESTORED PAGE NAVIGATION
    ========================================================= */
@@ -3655,7 +3656,9 @@ function setupPageNavigation() {
   const main = document.querySelector('main');
 
   if (!homePage || !competitions || !main) {
-    console.error('Page navigation could not start: a required page container is missing.');
+    console.error(
+      'Page navigation could not start: a required page container is missing.'
+    );
     return;
   }
 
@@ -3663,17 +3666,26 @@ function setupPageNavigation() {
     homePage.insertAdjacentElement('afterend', competitions);
   }
 
-  const pages = ['entries', 'referral', 'accountArea', 'support'];
+  const pages = [
+    'entries',
+    'referral',
+    'accountArea',
+    'howToPlay',
+    'support'
+  ];
+
   const validPages = [
-  'home',
-  'competitions',
-  'howToPlay',
-  ...pages
-];
+    'home',
+    'competitions',
+    ...pages
+  ];
 
   function showPage(page, updateAddress = true) {
-    if (!validPages.includes(page)) page = 'home';
+    if (!validPages.includes(page)) {
+      page = 'home';
+    }
 
+    // Hide every page first.
     homePage.classList.add('page-hidden');
     competitions.classList.add('page-hidden');
 
@@ -3681,50 +3693,68 @@ function setupPageNavigation() {
       element(id)?.classList.add('page-hidden');
     });
 
+    // Show only the selected page.
     if (page === 'home') {
-  homePage.classList.remove('page-hidden');
+      homePage.classList.remove('page-hidden');
 
-} else if (page === 'competitions') {
-  competitions.classList.remove('page-hidden');
+    } else if (page === 'competitions') {
+      competitions.classList.remove('page-hidden');
 
-} else if (page === 'howToPlay') {
-  element('howToPlay')?.classList.remove('page-hidden');
+    } else {
+      element(page)?.classList.remove('page-hidden');
+    }
 
-} else {
-
+    // Update the browser address.
     if (updateAddress) {
       const newHash = `#${page}`;
 
       if (window.location.hash !== newHash) {
-        window.history.pushState({ page }, '', newHash);
+        window.history.pushState(
+          { page },
+          '',
+          newHash
+        );
       }
     }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   }
 
+  // Navigation menu links.
   document.querySelectorAll('a[data-page]').forEach((link) => {
     link.addEventListener('click', (event) => {
       event.preventDefault();
+
       showPage(link.dataset.page);
       closeNavigationMenu();
     });
   });
 
+  // Links that return to Home.
   document.querySelectorAll('a[href="#home"]').forEach((link) => {
     link.addEventListener('click', (event) => {
       event.preventDefault();
+
       showPage('home');
       closeNavigationMenu();
     });
   });
 
+  // Browser Back and Forward buttons.
   window.addEventListener('popstate', () => {
-    const page = window.location.hash.replace('#', '') || 'home';
+    const page =
+      window.location.hash.replace('#', '') || 'home';
+
     showPage(page, false);
   });
 
-  const initialPage = window.location.hash.replace('#', '') || 'home';
+  // Display the page requested by the current URL.
+  const initialPage =
+    window.location.hash.replace('#', '') || 'home';
+
   showPage(initialPage, false);
 }
 
