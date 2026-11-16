@@ -1562,6 +1562,7 @@ element('changePasswordForm')?.addEventListener(
   }
 );
 
+
 /* =========================================================
    REFERRAL DASHBOARD
    ========================================================= */
@@ -1605,16 +1606,18 @@ function clearReferralDashboard(
 
   setHidden('referralRewardSelect', false);
 
-  if (element('referralRewardSelect')) {
-    element('referralRewardSelect').replaceChildren(
+  const rewardSelect = element('referralRewardSelect');
+
+  if (rewardSelect) {
+    rewardSelect.replaceChildren(
       new Option('No available rewards', '')
     );
-    element('referralRewardSelect').disabled = true;
+    rewardSelect.disabled = true;
   }
 
   if (element('referralCompetitionSelect')) {
-  populateReferralCompetitionSelect([]);
-}
+    populateReferralCompetitionSelect([]);
+  }
 
   if (element('claimReferralRewardButton')) {
     element('claimReferralRewardButton').disabled = true;
@@ -1622,7 +1625,7 @@ function clearReferralDashboard(
 
   setText(
     'referralClaimMessage',
-    'Sign in to claim a free entry.'
+    'Sign in to view your referral rewards.'
   );
 }
 
@@ -1672,6 +1675,11 @@ async function loadMyReferralDashboard(user) {
   }
 
   setReferralMessage('Loading your referral details…');
+
+  setText(
+    'referralClaimMessage',
+    'Your referral rewards are being checked.'
+  );
 
   try {
     const {
@@ -1814,6 +1822,13 @@ async function loadMyReferralDashboard(user) {
       'Your personal referral link is ready to share.'
     );
 
+    setText(
+      'referralClaimMessage',
+      availableRewards.length
+        ? 'You are signed in. Your available referral rewards are shown above. Free-entry redemption is not available yet.'
+        : 'You are signed in. Refer a friend to earn a free entry.'
+    );
+
     updateReferralClaimButton();
 
   } catch (error) {
@@ -1825,18 +1840,20 @@ async function loadMyReferralDashboard(user) {
       error.message ||
       'We could not load your referral details. Please try again.'
     );
+
+    setText(
+      'referralClaimMessage',
+      'We could not load your referral rewards. Please try again.'
+    );
   }
 }
 
 function updateReferralClaimButton() {
-  const reward = element('referralRewardSelect')?.value;
-  const competition =
-    element('referralCompetitionSelect')?.value;
-
   const button = element('claimReferralRewardButton');
 
   if (button) {
-    button.disabled = !(reward && competition);
+    // Reward redemption is not connected yet.
+    button.disabled = true;
   }
 }
 
@@ -1930,8 +1947,8 @@ element('shareReferralLinkButton')
   ?.addEventListener('click', shareReferralLink);
 
 /*
- * Referral reward redemption is intentionally not connected here yet.
- * The existing backend requires a verified challenge ID as well as
+ * Referral reward redemption is intentionally not connected yet.
+ * The backend requires a verified challenge ID as well as
  * a reward ID. We must connect the exact challenge-verification
  * sequence before enabling this button.
  */
@@ -1943,6 +1960,7 @@ element('claimReferralRewardButton')
       'Free reward claims are not available yet. Your reward remains in your account; no payment has been taken.'
     );
   });
+
 
 /* =========================================================
    ACCOUNT INTERFACE
