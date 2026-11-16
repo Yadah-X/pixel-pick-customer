@@ -484,100 +484,156 @@ function setupInactivityLogout() {
 }
 
 
+
 /* =========================================================
-   PAGE NAVIGATION
+   AUTOMATIC LOGOUT AFTER 15 MINUTES
    ========================================================= */
 
-function setupPageNavigation() {
-  const homePage = element('homePage');
-  const competitions = element('competitions');
-  const main = document.querySelector('main');
+let idleLogoutTimer = null;
+let idleLogoutInProgress = false;
+let lastActivityAt = Date.now();
+let lastActivitySavedAt = 0;
 
-  if (!homePage || !competitions || !main) return;
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+const ACTIVITY_STORAGE_KEY = 'pixelPickLastActivity';
+const CHECKOUT_STORAGE_KEY = 'pixelPickCheckoutInProgress';
 
-  if (competitions.parentElement !== main) {
-    homePage.insertAdjacentElement('afterend', competitions);
+function isPayFastCheckoutInProgress() {
+  return sessionStorage.getItem(CHECKOUT_STORAGE_KEY) === 'true';
+}
+
+function getLastActivityTime() {
+  const stored = Number(localStorage.getItem(ACTIVITY_STORAGE_KEY));
+
+  return Number.isFinite(stored) && stored > 0
+    ? stored
+    : Date.now();
+}
+
+function saveActivityTime(force = false) {
+  if (isPayFastCheckoutInProgress()) return;
+
+  const now = Date.now();
+
+  lastActivityAt = now;
+
+  if (force || now - lastActivitySavedAt >= 5000) {
+    localStorage.setItem(ACTIVITY_STORAGE_KEY, String(now));
+    lastActivitySavedAt = now;
   }
 
-  const pages = [
-    'entries',
-    'referral',
-    'accountArea',
-    'howToPlay',
-    'support'
+  scheduleIdleLogout();
+}
+
+function stopIdleLogout() {
+  if (idleLogoutTimer) {
+    clearTimeout(idleLogoutTimer);
+    idleLogoutTimer = null;
+  }
+}
+
+function scheduleIdleLogout() {
+  if (idleLogoutInProgress) return;
+
+  if (idleLogoutTimer) {
+    clearTimeout(idleLogoutTimer);
+    idleLogoutTimer = null;
+  }
+
+  if (isPayFastCheckoutInProgress()) return;
+
+  const elapsed = Date.now() - lastActivityAt;
+  const remaining = IDLE_TIMEOUT_MS - elapsed;
+
+  idleLogoutTimer = setTimeout(
+    checkIdleLogout,
+    Math.max(remaining, 0)
+  );
+}
+
+async function checkIdleLogout() {
+  if (idleLogoutInProgress) return;
+
+  if (isPayFastCheckoutInProgress()) {
+    idleLogoutTimer = null;
+    return;
+  }
+
+  const latestActivity = getLastActivityTime();
+
+  lastActivityAt = latestActivity;
+
+  const elapsed = Date.now() - latestActivity;
+
+  if (elapsed < IDLE_TIMEOUT_MS) {
+    scheduleIdleLogout();
+    return;
+  }
+
+  idleLogoutInProgress = true;
+
+  try {
+    await signOutAccount('inactivity');
+  } finally {
+    idleLogoutInProgress = false;
+  }
+}
+
+function startIdleLogout(event) {
+  if (event === 'SIGNED_IN') {
+    saveActivityTime(true);
+    return;
+  }
+
+  if (!localStorage.getItem(ACTIVITY_STORAGE_KEY)) {
+    saveActivityTime(true);
+    return;
+  }
+
+  lastActivityAt = getLastActivityTime();
+  scheduleIdleLogout();
+}
+
+function setupInactivityLogout() {
+  const activityEvents = [
+    'pointerdown',
+    'pointermove',
+    'keydown',
+    'scroll',
+    'touchstart',
+    'click'
   ];
 
-  function showPage(page, updateAddress = true) {
-    const validPages = [
-      'home',
-      'competitions',
-      ...pages
-    ];
+  activityEvents.forEach(eventName => {
+    document.addEventListener(eventName, () => {
+      if (idleLogoutInProgress) return;
+      if (isPayFastCheckoutInProgress()) return;
 
-    if (!validPages.includes(page)) {
-      page = 'home';
-    }
-
-    homePage.classList.add('page-hidden');
-    competitions.classList.add('page-hidden');
-
-    pages.forEach((id) => {
-      element(id)?.classList.add('page-hidden');
-    });
-
-    if (page === 'home') {
-      // Home displays only the Home page and its featured competitions.
-      homePage.classList.remove('page-hidden');
-
-    } else if (page === 'competitions') {
-      // The Competitions page displays all open competitions.
-      competitions.classList.remove('page-hidden');
-
-    } else {
-      element(page)?.classList.remove('page-hidden');
-    }
-
-    if (updateAddress) {
-      const newHash = `#${page}`;
-
-      if (window.location.hash !== newHash) {
-        window.history.pushState({ page }, '', newHash);
-      }
-    }
-
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-  }
-
-  document.querySelectorAll('a[data-page]').forEach((link) => {
-    link.addEventListener('click', (event) => {
-      event.preventDefault();
-      showPage(link.dataset.page);
-      closeNavigationMenu();
-    });
+      saveActivityTime();
+    }, { passive: true });
   });
 
-  document.querySelectorAll('a[href="#home"]').forEach((link) => {
-    link.addEventListener('click', (event) => {
-      event.preventDefault();
-      showPage('home');
-      closeNavigationMenu();
-    });
+  window.addEventListener('storage', event => {
+    if (event.key !== ACTIVITY_STORAGE_KEY || !event.newValue) {
+      return;
+    }
+
+    const timestamp = Number(event.newValue);
+
+    if (!Number.isFinite(timestamp) || timestamp <= 0) {
+      return;
+    }
+
+    lastActivityAt = timestamp;
+    scheduleIdleLogout();
   });
 
-  window.addEventListener('popstate', () => {
-    showPage(
-      window.location.hash.replace('#', '') || 'home',
-      false
-    );
-  });
+  window.addEventListener('pageshow', () => {
+    if (isPayFastCheckoutInProgress()) return;
 
-  showPage(
-    window.location.hash.replace('#', '') || 'home',
-    false
-  );
+    lastActivityAt = getLastActivityTime();
+    scheduleIdleLogout();
+  });
 }
 
 /* =========================================================
