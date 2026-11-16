@@ -1453,7 +1453,7 @@ function clearReferralDashboard(
     );
   }
 
-  setHidden('referralRewardSelect', false);
+  setHidden('referralClaimSection', true);
 
   const rewardSelect = element('referralRewardSelect');
 
