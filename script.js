@@ -1421,7 +1421,8 @@ function setReferralMessage(message) {
 
 function clearReferralDashboard(
   message = 'Sign in to access your personal referral link.'
-) {
+) {  // Cancel any older referral dashboard request.
+  referralRequestNumber++;
   const linkInput = element('referralLink');
 
   if (linkInput) {
