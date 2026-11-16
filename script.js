@@ -3663,7 +3663,12 @@ function setupPageNavigation() {
   }
 
   const pages = ['entries', 'referral', 'accountArea', 'support'];
-  const validPages = ['home', 'competitions', ...pages];
+  const validPages = [
+  'home',
+  'competitions',
+  'howToPlay',
+  ...pages
+];
 
   function showPage(page, updateAddress = true) {
     if (!validPages.includes(page)) page = 'home';
