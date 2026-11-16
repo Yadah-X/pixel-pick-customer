@@ -3681,13 +3681,15 @@ function setupPageNavigation() {
     });
 
     if (page === 'home') {
-      homePage.classList.remove('page-hidden');
-      competitions.classList.remove('page-hidden');
-    } else if (page === 'competitions') {
-      competitions.classList.remove('page-hidden');
-    } else {
-      element(page)?.classList.remove('page-hidden');
-    }
+  homePage.classList.remove('page-hidden');
+
+} else if (page === 'competitions') {
+  competitions.classList.remove('page-hidden');
+
+} else if (page === 'howToPlay') {
+  element('howToPlay')?.classList.remove('page-hidden');
+
+} else {
 
     if (updateAddress) {
       const newHash = `#${page}`;
