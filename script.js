@@ -2089,7 +2089,7 @@ async function signOutAccount(reason = 'manual') {
   }
 
   localStorage.removeItem(ACTIVITY_STORAGE_KEY);
-  sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
+  localStorage.removeItem(CHECKOUT_STORAGE_KEY);
 
   accountMode = 'signin';
 
