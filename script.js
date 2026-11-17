@@ -3676,7 +3676,10 @@ element('board')?.addEventListener(
   // Only the verified PayFast ITN confirms a payment.
   localStorage.removeItem(CHECKOUT_STORAGE_KEY);
 
-  gamePaymentBusy = false;
+gamePaymentBusy = false;
+
+// Restart the inactivity timer after returning from PayFast.
+scheduleIdleLogout();
 
   if (payment === 'returned') {
     setText(
