@@ -2396,6 +2396,7 @@ function clearGameCountdown() {
   }
 }
 
+
 function closeCompetitionGame() {
   gameElement('competitionGame')?.classList.add('hidden');
 
@@ -2411,6 +2412,11 @@ function closeCompetitionGame() {
   activeGameCompetitionId = null;
   activeGameNeedsPayment = false;
 
+  // Reset referral challenge information.
+  activeGameMode = 'entry';
+  activeReferralRewardId = null;
+  activeReferralRewardRedeemed = false;
+
   const payButton = gameElement('gamePayButton');
 
   if (payButton) {
@@ -2418,8 +2424,12 @@ function closeCompetitionGame() {
     payButton.textContent = 'Continue to PayFast';
   }
 
+  // Allow the customer to try again if their reward is still available.
+  updateReferralClaimButton();
+
   loadMyHistory();
 }
+
 
 function normaliseOptions(options) {
   if (!Array.isArray(options)) return [];
