@@ -1697,118 +1697,28 @@ setHidden('referralClaimSection', false);
   }
 }
 
+
 function updateReferralClaimButton() {
   const button = element('claimReferralRewardButton');
+  const rewardSelect = element('referralRewardSelect');
+  const competitionSelect = element('referralCompetitionSelect');
 
-  if (button) {
-    // Reward redemption is not connected yet.
-    button.disabled = true;
-  }
-}
-
-element('referralRewardSelect')
-  ?.addEventListener('change', updateReferralClaimButton);
-
-element('referralCompetitionSelect')
-  ?.addEventListener('change', updateReferralClaimButton);
-
-async function copyReferralLink() {
-  const link = element('referralLink')?.value.trim();
-
-  if (!link) {
-    setReferralMessage(
-      'Your referral link is not ready yet. Please try again.'
-    );
+  if (!button || !rewardSelect || !competitionSelect) {
     return;
   }
 
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(link);
-    } else {
-      const input = element('referralLink');
+  const rewardId = rewardSelect.value;
+  const competitionId = competitionSelect.value;
 
-      input.focus();
-      input.select();
+  button.disabled = !rewardId || !competitionId;
 
-      if (!document.execCommand('copy')) {
-        throw new Error('Copy was not successful.');
-      }
-    }
-
-    setReferralMessage(
-      'Your referral link has been copied. You can now share it with friends.'
-    );
-
-  } catch (error) {
-    console.error('Could not copy referral link:', error);
-
-    setReferralMessage(
-      'We could not copy the link automatically. Please select and copy the link from the box.'
-    );
-
-    element('referralLink')?.focus();
-    element('referralLink')?.select();
+  if (button.disabled) {
+    button.textContent = 'Claim Free Entry';
+  } else {
+    button.textContent = 'Start Free Entry Challenge';
   }
 }
 
-async function shareReferralLink() {
-  const link = element('referralLink')?.value.trim();
-
-  if (!link) {
-    setReferralMessage(
-      'Your referral link is not ready yet. Please try again.'
-    );
-    return;
-  }
-
-  try {
-    if (navigator.share) {
-      await navigator.share({
-        title: 'Join Pixel Pick',
-        text: 'Join me on Pixel Pick and take part in skill competitions.',
-        url: link
-      });
-
-      setReferralMessage(
-        'Your referral link is ready to share.'
-      );
-
-    } else {
-      await copyReferralLink();
-    }
-
-  } catch (error) {
-    if (error.name === 'AbortError') return;
-
-    console.error('Could not share referral link:', error);
-
-    setReferralMessage(
-      'Sharing is unavailable on this device. Please use the Copy referral link button instead.'
-    );
-  }
-}
-
-element('copyReferralLinkButton')
-  ?.addEventListener('click', copyReferralLink);
-
-element('shareReferralLinkButton')
-  ?.addEventListener('click', shareReferralLink);
-
-/*
- * Referral reward redemption is intentionally not connected yet.
- * The backend requires a verified challenge ID as well as
- * a reward ID. We must connect the exact challenge-verification
- * sequence before enabling this button.
- */
-
-element('claimReferralRewardButton')
-  ?.addEventListener('click', () => {
-    setText(
-      'referralClaimMessage',
-      'Free reward claims are not available yet. Your reward remains in your account; no payment has been taken.'
-    );
-  });
 /* =========================================================
    REFRESH ACCOUNT AND HISTORY
    ========================================================= */
