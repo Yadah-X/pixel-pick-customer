@@ -352,7 +352,7 @@ captureReferralCodeFromUrl();
    ========================================================= */
 
 function isPayFastCheckoutInProgress() {
-  return sessionStorage.getItem(CHECKOUT_STORAGE_KEY) === 'true';
+  return localStorage.getItem(CHECKOUT_STORAGE_KEY) === 'true';
 }
 
 function getLastActivityTime() {
