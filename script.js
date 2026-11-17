@@ -2803,6 +2803,7 @@ async function startCompetitionGame(
     return;
   }
 
+
 /* =========================================================
    REDEEM A COMPLETED REFERRAL REWARD
    ========================================================= */
@@ -2859,165 +2860,41 @@ async function redeemActiveReferralReward() {
     );
   }
 
+  // The server has confirmed redemption.
+  // Record success before attempting dashboard refreshes.
   activeReferralRewardRedeemed = true;
   activeGameNeedsPayment = false;
 
-  // Refresh the customer's referral information.
-  const { data: sessionData } =
-    await supabaseClient.auth.getSession();
+  // Refresh referral information without undoing
+  // a successful redemption if refreshing fails.
+  try {
+    const { data: sessionData } =
+      await supabaseClient.auth.getSession();
 
-  if (sessionData?.session?.user) {
-    await loadMyReferralDashboard(
-      sessionData.session.user
+    if (sessionData?.session?.user) {
+      await loadMyReferralDashboard(
+        sessionData.session.user
+      );
+    }
+  } catch (refreshError) {
+    console.error(
+      'Reward redeemed, but referral dashboard refresh failed:',
+      refreshError
     );
   }
 
-  // Refresh the customer's entry history.
-  await loadMyHistory();
+  // Refresh entry history separately.
+  try {
+    await loadMyHistory();
+  } catch (refreshError) {
+    console.error(
+      'Reward redeemed, but entry history refresh failed:',
+      refreshError
+    );
+  }
 
   return true;
 }
-
-  // A referral game must have a selected reward.
-  if (mode === 'referral' && !rewardId) {
-    setText(
-      'referralClaimMessage',
-      'Please select an available referral reward first.'
-    );
-
-    return;
-  }
-
-  clearGameCountdown();
-
-  activeGameEntryId = null;
-  activeGameCompetitionId = null;
-  activeGameAttempt = null;
-  activeGameTasks = [];
-  activeGameCompletedTaskIds = [];
-
-  activeGameMode = mode;
-  activeReferralRewardId =
-    mode === 'referral' ? String(rewardId) : null;
-
-  activeReferralRewardRedeemed = false;
-
-  activeGameNeedsPayment = mode === 'competition';
-
-  gameSubmitting = false;
-  gamePaymentBusy = false;
-
-  gameElement('competitionGame')?.classList.remove('hidden');
-
-  setText(
-    'gameCompetitionTitle',
-    competitionName
-  );
-
-  setHidden('gameTaskCard', true);
-  setHidden('gameCompletePanel', true);
-  setHidden('gamePaymentPanel', true);
-
-  setText('gameTimerText', '30:00 remaining');
-
-  const payButton = gameElement('gamePayButton');
-
-  if (payButton) {
-    payButton.disabled = false;
-    payButton.textContent = 'Continue to PayFast';
-  }
-
-  setGameStatus(
-    'Loading your saved competition attempt…'
-  );
-
-  try {
-    // Both paid competitions and referral entries
-    // must start using a competition ID.
-    const requestBody =
-      mode === 'competition' || mode === 'referral'
-        ? { competition_id: id }
-        : { entry_id: id };
-
-    const result = await callEdgeFunction(
-      START_COMPETITION_ATTEMPT_URL,
-      requestBody
-    );
-
-    if (
-      result.ok === false ||
-      !result.attempt ||
-      !result.entry ||
-      !Array.isArray(result.tasks) ||
-      result.tasks.length !== 10
-    ) {
-      throw new Error(
-        result.error ||
-        'The competition did not return all ten tasks.'
-      );
-    }
-
-    activeGameEntryId = String(result.entry.id);
-
-    activeGameCompetitionId =
-      mode === 'competition' || mode === 'referral'
-        ? String(id)
-        : null;
-
-    activeGameAttempt = result.attempt;
-    activeGameTasks = result.tasks;
-
-    activeGameCompletedTaskIds =
-      Array.isArray(result.completed_task_ids)
-        ? result.completed_task_ids
-        : [];
-
-    // If this attempt was already submitted,
-    // a referral reward can be redeemed now.
-    if (
-      activeGameAttempt.status === 'submitted' ||
-      activeGameCompletedTaskIds.length === 10
-    ) {
-      if (mode === 'referral') {
-        setGameStatus(
-          'Your completed challenge has been found. Checking your referral reward…'
-        );
-
-        await redeemActiveReferralReward();
-
-      } else {
-        activeGameNeedsPayment =
-          mode === 'competition';
-      }
-
-      showGamePaymentPanel();
-      return;
-    }
-
-    if (activeGameAttempt.status !== 'in_progress') {
-      throw new Error(
-        'This attempt is no longer available. Please refresh your history.'
-      );
-    }
-
-    setHidden('gamePaymentPanel', true);
-
-    renderCurrentGameTask();
-
-  } catch (error) {
-    console.error(
-      'Could not start competition attempt:',
-      error
-    );
-
-    setGameStatus(
-      error.message ||
-      'Could not start this competition. Please try again.'
-    );
-  }
-}
-
-
 
 /* =========================================================
    SUBMIT ONE ANSWER
