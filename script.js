@@ -2552,10 +2552,19 @@ function currentUnansweredTask() {
   );
 }
 
+
+/* =========================================================
+   SHOW GAME COMPLETION AND PAYMENT PANEL
+   ========================================================= */
+
 function showGamePaymentPanel() {
   setHidden('gameTaskCard', true);
   setHidden('gameCompletePanel', false);
-  setHidden('gamePaymentPanel', !activeGameNeedsPayment);
+
+  setHidden(
+    'gamePaymentPanel',
+    !activeGameNeedsPayment
+  );
 
   setText('gameProgressText', '10 of 10 complete');
   setText('gameTimerText', 'Challenge completed');
@@ -2579,6 +2588,32 @@ function showGamePaymentPanel() {
     'All ten answers have been saved. Your score and answers will remain hidden while the competition is in progress.'
   );
 
+  // Successful referral reward.
+  if (
+    activeGameMode === 'referral' &&
+    activeReferralRewardRedeemed
+  ) {
+    setHidden('gamePaymentPanel', true);
+
+    setGameStatus(
+      'Congratulations! Your referral reward has been successfully redeemed. Your competition entry is confirmed. Amount charged: R0.00.'
+    );
+
+    return;
+  }
+
+  // Referral attempt not yet successfully redeemed.
+  if (activeGameMode === 'referral') {
+    setHidden('gamePaymentPanel', true);
+
+    setGameStatus(
+      'Your challenge has been submitted, but your free referral entry has not yet been confirmed. Please try redeeming your reward again while it is still valid.'
+    );
+
+    return;
+  }
+
+  // Normal paid competition entry.
   if (activeGameNeedsPayment) {
     setGameStatus(
       'Your challenge is complete. Complete payment within the time shown to confirm this entry.'
@@ -2594,6 +2629,7 @@ function showGamePaymentPanel() {
     );
   }
 }
+
 
 /* =========================================================
    GAMEPLAY COUNTDOWN — 30 MINUTES
