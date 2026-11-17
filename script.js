@@ -2022,9 +2022,12 @@ element('accountForm')?.addEventListener(
           return;
         }
 
-        localStorage.removeItem(CHECKOUT_STORAGE_KEY);
+       localStorage.removeItem(CHECKOUT_STORAGE_KEY);
 
 gamePaymentBusy = false;
+
+// Restart the inactivity timer after returning from PayFast.
+scheduleIdleLogout();
 
 // Restart the inactivity timer after returning from PayFast.
 scheduleIdleLogout();
