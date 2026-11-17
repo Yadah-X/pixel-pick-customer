@@ -2793,6 +2793,81 @@ async function startCompetitionGame(
     return;
   }
 
+/* =========================================================
+   REDEEM A COMPLETED REFERRAL REWARD
+   ========================================================= */
+
+async function redeemActiveReferralReward() {
+  if (
+    activeGameMode !== 'referral' ||
+    !activeReferralRewardId ||
+    !activeGameAttempt?.id
+  ) {
+    throw new Error(
+      'The referral reward or challenge information is missing.'
+    );
+  }
+
+  if (activeReferralRewardRedeemed) {
+    return true;
+  }
+
+  if (activeGameAttempt.status !== 'submitted') {
+    throw new Error(
+      'All ten challenge tasks must be submitted before claiming your free entry.'
+    );
+  }
+
+  setGameStatus(
+    'Your ten answers are saved. Verifying your referral reward…'
+  );
+
+  const { data, error } = await supabaseClient.rpc(
+    'redeem_referral_reward',
+    {
+      p_reward_id: activeReferralRewardId,
+      p_challenge_id: activeGameAttempt.id
+    }
+  );
+
+  if (error) {
+    throw new Error(
+      error.message ||
+      'We could not redeem your referral reward.'
+    );
+  }
+
+  if (
+    !data ||
+    data.ok !== true ||
+    data.free_entry !== true ||
+    data.amount_charged !== 0
+  ) {
+    throw new Error(
+      data?.message ||
+      'The referral reward could not be confirmed. No free entry has been confirmed.'
+    );
+  }
+
+  activeReferralRewardRedeemed = true;
+  activeGameNeedsPayment = false;
+
+  // Refresh the customer's referral information.
+  const { data: sessionData } =
+    await supabaseClient.auth.getSession();
+
+  if (sessionData?.session?.user) {
+    await loadMyReferralDashboard(
+      sessionData.session.user
+    );
+  }
+
+  // Refresh the customer's entry history.
+  await loadMyHistory();
+
+  return true;
+}
+
   // A referral game must have a selected reward.
   if (mode === 'referral' && !rewardId) {
     setText(
