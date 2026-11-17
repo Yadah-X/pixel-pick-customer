@@ -2779,6 +2779,7 @@ function renderCurrentGameTask() {
   startGameplayCountdown();
 }
 
+
 /* =========================================================
    START OR RESUME A GAME
    Supports normal entries, paid competitions and referrals
@@ -2802,6 +2803,171 @@ async function startCompetitionGame(
 
     return;
   }
+
+  // A referral game must have a selected reward.
+  if (mode === 'referral' && !rewardId) {
+    setText(
+      'referralClaimMessage',
+      'Please select an available referral reward first.'
+    );
+
+    return;
+  }
+
+  clearGameCountdown();
+
+  activeGameEntryId = null;
+  activeGameCompetitionId = null;
+  activeGameAttempt = null;
+  activeGameTasks = [];
+  activeGameCompletedTaskIds = [];
+
+  activeGameMode = mode;
+  activeReferralRewardId =
+    mode === 'referral' ? String(rewardId) : null;
+
+  activeReferralRewardRedeemed = false;
+
+  activeGameNeedsPayment = mode === 'competition';
+
+  gameSubmitting = false;
+  gamePaymentBusy = false;
+
+  gameElement('competitionGame')?.classList.remove('hidden');
+
+  setText(
+    'gameCompetitionTitle',
+    competitionName
+  );
+
+  setHidden('gameTaskCard', true);
+  setHidden('gameCompletePanel', true);
+  setHidden('gamePaymentPanel', true);
+
+  setText('gameTimerText', '30:00 remaining');
+
+  const payButton = gameElement('gamePayButton');
+
+  if (payButton) {
+    payButton.disabled = false;
+    payButton.textContent = 'Continue to PayFast';
+  }
+
+  setGameStatus(
+    'Loading your saved competition attempt…'
+  );
+
+  try {
+    // Paid competitions and referral entries start
+    // using a competition ID. Existing entries use entry ID.
+    const requestBody =
+      mode === 'competition' || mode === 'referral'
+        ? { competition_id: id }
+        : { entry_id: id };
+
+    const result = await callEdgeFunction(
+      START_COMPETITION_ATTEMPT_URL,
+      requestBody
+    );
+
+    if (
+      !result ||
+      result.ok === false ||
+      !result.attempt ||
+      !result.entry ||
+      !Array.isArray(result.tasks) ||
+      result.tasks.length !== 10
+    ) {
+      throw new Error(
+        result?.error ||
+        'The competition did not return all ten tasks.'
+      );
+    }
+
+    activeGameEntryId = String(result.entry.id);
+
+    activeGameCompetitionId =
+      mode === 'competition' || mode === 'referral'
+        ? String(id)
+        : null;
+
+    activeGameAttempt = result.attempt;
+    activeGameTasks = result.tasks;
+
+    activeGameCompletedTaskIds =
+      Array.isArray(result.completed_task_ids)
+        ? result.completed_task_ids
+        : [];
+
+    // A submitted attempt can be resumed.
+    if (
+      activeGameAttempt.status === 'submitted' ||
+      activeGameCompletedTaskIds.length === 10
+    ) {
+      if (mode === 'referral') {
+        if (activeGameAttempt.status !== 'submitted') {
+          throw new Error(
+            'Your answers are recorded, but the completed challenge has not yet been confirmed. Please try again.'
+          );
+        }
+
+        setGameStatus(
+          'Your completed challenge has been found. Checking your referral reward…'
+        );
+
+        await redeemActiveReferralReward();
+
+      } else {
+        activeGameNeedsPayment =
+          mode === 'competition';
+      }
+
+      showGamePaymentPanel();
+      return;
+    }
+
+    if (activeGameAttempt.status !== 'in_progress') {
+      throw new Error(
+        'This attempt is no longer available. Please refresh your history.'
+      );
+    }
+
+    setHidden('gamePaymentPanel', true);
+
+    renderCurrentGameTask();
+
+  } catch (error) {
+    console.error(
+      'Could not start competition attempt:',
+      error
+    );
+
+    if (
+      mode === 'referral' &&
+      activeGameAttempt &&
+      (
+        activeGameAttempt.status === 'submitted' ||
+        activeGameCompletedTaskIds.length === 10
+      )
+    ) {
+      setHidden('gameTaskCard', true);
+      setHidden('gameCompletePanel', false);
+      setHidden('gamePaymentPanel', true);
+
+      setGameStatus(
+        (error.message ||
+          'Your referral reward could not be confirmed.') +
+        ' No payment has been taken. You can close this window and try again while your reward is valid.'
+      );
+
+    } else {
+      setGameStatus(
+        error.message ||
+        'Could not start this competition. Please try again.'
+      );
+    }
+  }
+}
 
 
 /* =========================================================
