@@ -1676,11 +1676,11 @@ setHidden('referralClaimSection', false);
     );
 
     setText(
-      'referralClaimMessage',
-      availableRewards.length
-        ? 'You are signed in. Your available referral rewards are shown above. Free-entry redemption is not available yet.'
-        : 'You are signed in. Refer a friend to earn a free entry.'
-    );
+  'referralClaimMessage',
+  availableRewards.length
+    ? 'Choose an available reward and an open competition, then complete all ten visual challenge tasks to claim your free entry.'
+    : 'You are signed in. Refer a friend to earn a free entry. Once a reward is available, you can use it to enter an open competition for free.'
+);
 
     updateReferralClaimButton();
 
