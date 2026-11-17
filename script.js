@@ -3412,10 +3412,10 @@ async function beginGamePayment() {
     document.body.appendChild(form);
 
     // Prevent the 15-minute inactivity logout from interrupting checkout.
-    sessionStorage.setItem(
-      CHECKOUT_STORAGE_KEY,
-      'true'
-    );
+    localStorage.setItem(
+  CHECKOUT_STORAGE_KEY,
+  'true'
+);
 
     setText(
       'gamePaymentMessage',
