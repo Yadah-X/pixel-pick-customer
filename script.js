@@ -2768,14 +2768,17 @@ function renderCurrentGameTask() {
 
   startGameplayCountdown();
 }
+
 /* =========================================================
    START OR RESUME A GAME
+   Supports normal entries, paid competitions and referrals
    ========================================================= */
 
 async function startCompetitionGame(
   id,
   competitionName = 'Competition',
-  mode = 'entry'
+  mode = 'entry',
+  rewardId = null
 ) {
   const { data, error } =
     await supabaseClient.auth.getSession();
@@ -2790,6 +2793,16 @@ async function startCompetitionGame(
     return;
   }
 
+  // A referral game must have a selected reward.
+  if (mode === 'referral' && !rewardId) {
+    setText(
+      'referralClaimMessage',
+      'Please select an available referral reward first.'
+    );
+
+    return;
+  }
+
   clearGameCountdown();
 
   activeGameEntryId = null;
@@ -2797,6 +2810,12 @@ async function startCompetitionGame(
   activeGameAttempt = null;
   activeGameTasks = [];
   activeGameCompletedTaskIds = [];
+
+  activeGameMode = mode;
+  activeReferralRewardId =
+    mode === 'referral' ? String(rewardId) : null;
+
+  activeReferralRewardRedeemed = false;
 
   activeGameNeedsPayment = mode === 'competition';
 
@@ -2828,8 +2847,10 @@ async function startCompetitionGame(
   );
 
   try {
+    // Both paid competitions and referral entries
+    // must start using a competition ID.
     const requestBody =
-      mode === 'competition'
+      mode === 'competition' || mode === 'referral'
         ? { competition_id: id }
         : { entry_id: id };
 
@@ -2854,7 +2875,9 @@ async function startCompetitionGame(
     activeGameEntryId = String(result.entry.id);
 
     activeGameCompetitionId =
-      mode === 'competition' ? String(id) : null;
+      mode === 'competition' || mode === 'referral'
+        ? String(id)
+        : null;
 
     activeGameAttempt = result.attempt;
     activeGameTasks = result.tasks;
@@ -2864,12 +2887,23 @@ async function startCompetitionGame(
         ? result.completed_task_ids
         : [];
 
+    // If this attempt was already submitted,
+    // a referral reward can be redeemed now.
     if (
       activeGameAttempt.status === 'submitted' ||
       activeGameCompletedTaskIds.length === 10
     ) {
-      activeGameNeedsPayment =
-        mode === 'competition';
+      if (mode === 'referral') {
+        setGameStatus(
+          'Your completed challenge has been found. Checking your referral reward…'
+        );
+
+        await redeemActiveReferralReward();
+
+      } else {
+        activeGameNeedsPayment =
+          mode === 'competition';
+      }
 
       showGamePaymentPanel();
       return;
@@ -2897,6 +2931,7 @@ async function startCompetitionGame(
     );
   }
 }
+
 
 /* =========================================================
    SUBMIT ONE ANSWER
