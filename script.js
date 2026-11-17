@@ -3658,7 +3658,7 @@ element('board')?.addEventListener(
 
   // PayFast has returned the customer to the website.
   // Only the verified PayFast ITN confirms a payment.
-  sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
+  localStorage.removeItem(CHECKOUT_STORAGE_KEY);
 
   gamePaymentBusy = false;
 
