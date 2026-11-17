@@ -1720,6 +1720,60 @@ function updateReferralClaimButton() {
 }
 
 /* =========================================================
+   START REFERRAL FREE-ENTRY CHALLENGE
+   ========================================================= */
+
+element('referralRewardSelect')
+  ?.addEventListener('change', updateReferralClaimButton);
+
+element('referralCompetitionSelect')
+  ?.addEventListener('change', updateReferralClaimButton);
+
+element('claimReferralRewardButton')
+  ?.addEventListener('click', async () => {
+    const button = element('claimReferralRewardButton');
+    const rewardSelect = element('referralRewardSelect');
+    const competitionSelect = element('referralCompetitionSelect');
+
+    const rewardId = rewardSelect?.value;
+    const competitionId = competitionSelect?.value;
+
+    if (!rewardId || !competitionId) {
+      setText(
+        'referralClaimMessage',
+        'Please select an available reward and an open competition.'
+      );
+      return;
+    }
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Opening challenge…';
+    }
+
+    const competitionName =
+      competitionSelect.options[
+        competitionSelect.selectedIndex
+      ]?.text || 'Competition';
+
+    setText(
+      'referralClaimMessage',
+      'Your free-entry challenge is being prepared. Complete all ten tasks to claim your reward.'
+    );
+
+    await startCompetitionGame(
+      competitionId,
+      competitionName,
+      'referral',
+      rewardId
+    );
+
+    if (!activeGameAttempt) {
+      updateReferralClaimButton();
+    }
+  });
+
+/* =========================================================
    REFRESH ACCOUNT AND HISTORY
    ========================================================= */
 
