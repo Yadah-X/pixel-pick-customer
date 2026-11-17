@@ -2012,9 +2012,12 @@ element('accountForm')?.addEventListener(
           return;
         }
 
-        sessionStorage.removeItem(
-          PENDING_REFERRAL_STORAGE_KEY
-        );
+        localStorage.removeItem(CHECKOUT_STORAGE_KEY);
+
+gamePaymentBusy = false;
+
+// Restart the inactivity timer after returning from PayFast.
+scheduleIdleLogout();
 
         if (data.session) {
           showAccountMessage(
