@@ -485,22 +485,32 @@ function setupInactivityLogout() {
   });
 
   window.addEventListener('storage', (event) => {
-    if (
-      event.key !== ACTIVITY_STORAGE_KEY ||
-      !event.newValue
-    ) {
-      return;
-    }
 
-    const timestamp = Number(event.newValue);
-
-    if (Number.isFinite(timestamp)) {
-      lastActivityAt = timestamp;
+  // Another tab has cleared PayFast checkout protection.
+  if (event.key === CHECKOUT_STORAGE_KEY) {
+    if (!event.newValue) {
       scheduleIdleLogout();
     }
-  });
-}
 
+    return;
+  }
+
+  // Another tab has recorded customer activity.
+  if (
+    event.key !== ACTIVITY_STORAGE_KEY ||
+    !event.newValue
+  ) {
+    return;
+  }
+
+  const timestamp = Number(event.newValue);
+
+  if (Number.isFinite(timestamp)) {
+    lastActivityAt = timestamp;
+    scheduleIdleLogout();
+  }
+});
+}
 /* =========================================================
    NAVIGATION MENU
    ========================================================= */
