@@ -59,6 +59,10 @@ let activeGameEntryId = null;
 let activeGameCompetitionId = null;
 let activeGameNeedsPayment = false;
 
+let activeGameMode = 'entry';
+let activeReferralRewardId = null;
+let activeReferralRewardRedeemed = false;
+
 let gameSubmitting = false;
 let gamePaymentBusy = false;
 let gameCountdownInterval = null;
