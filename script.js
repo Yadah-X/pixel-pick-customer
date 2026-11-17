@@ -3008,8 +3008,10 @@ async function redeemActiveReferralReward() {
 }
 
 
+
 /* =========================================================
    SUBMIT ONE ANSWER
+   Supports paid and referral entries
    ========================================================= */
 
 async function submitGameAnswer(
@@ -3063,15 +3065,14 @@ async function submitGameAnswer(
       activeGameCompletedTaskIds.push(task.id);
     }
 
-    // The server response contains no score or correctness data.
-    // The customer is never shown whether this answer was correct.
+    // Never reveal correctness or scores to the customer.
 
     if (
       result.completed ||
       activeGameCompletedTaskIds.length === 10
     ) {
       setGameStatus(
-        'All ten answers have been submitted. Loading your payment details…'
+        'All ten answers have been submitted. Verifying your entry…'
       );
 
       clearGameCountdown();
@@ -3085,12 +3086,13 @@ async function submitGameAnswer(
         );
 
         if (
+          refreshed.ok === false ||
           !refreshed.attempt ||
           refreshed.attempt.status !== 'submitted' ||
           !refreshed.entry
         ) {
           throw new Error(
-            'Your answers were saved, but the payment details could not be loaded. Please reopen this competition from the competitions page.'
+            'Your answers were saved, but your completed attempt could not be loaded. Please reopen this competition.'
           );
         }
 
@@ -3104,14 +3106,31 @@ async function submitGameAnswer(
             ? refreshed.completed_task_ids
             : activeGameCompletedTaskIds;
 
-        activeGameNeedsPayment = true;
+        if (activeGameMode === 'referral') {
+          // Redeem the selected reward using the submitted
+          // visual challenge attempt ID.
+          await redeemActiveReferralReward();
+
+          activeGameNeedsPayment = false;
+
+          showGamePaymentPanel();
+
+          setGameStatus(
+            'Congratulations! Your referral reward has been successfully redeemed. Your competition entry is confirmed. Amount charged: R0.00.'
+          );
+
+        } else {
+          activeGameNeedsPayment = true;
+
+          showGamePaymentPanel();
+        }
 
       } else {
         activeGameNeedsPayment = false;
         activeGameAttempt.status = 'submitted';
-      }
 
-      showGamePaymentPanel();
+        showGamePaymentPanel();
+      }
 
     } else {
       renderCurrentGameTask();
@@ -3119,23 +3138,42 @@ async function submitGameAnswer(
 
   } catch (error) {
     console.error(
-      'Could not submit competition answer:',
+      'Could not submit or complete competition attempt:',
       error
     );
 
-    setGameStatus(
-      error.message ||
-      'Your answer could not be saved. Please try again.'
-    );
+    if (
+      activeGameMode === 'referral' &&
+      activeGameCompletedTaskIds.length === 10
+    ) {
+      // Do not send a referral customer to PayFast.
+      // Their answers remain saved, but redemption
+      // has not been confirmed.
+      setHidden('gameTaskCard', true);
+      setHidden('gameCompletePanel', false);
+      setHidden('gamePaymentPanel', true);
 
-    buttons.forEach(button => {
-      button.disabled = false;
-    });
+      setGameStatus(
+        (error.message || 'Your referral reward could not be redeemed.') +
+        ' Your answers have been saved. Please close and reopen the referral claim to try again while your challenge and reward are still valid.'
+      );
+
+    } else {
+      setGameStatus(
+        error.message ||
+        'Your answer could not be saved. Please try again.'
+      );
+
+      buttons.forEach(button => {
+        button.disabled = false;
+      });
+    }
 
   } finally {
     gameSubmitting = false;
   }
 }
+
 function startPaymentCountdown() {
   clearGameCountdown();
 
