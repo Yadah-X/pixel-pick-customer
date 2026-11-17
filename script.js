@@ -3427,7 +3427,7 @@ async function beginGamePayment() {
     // Prevent the 15-minute inactivity logout from interrupting checkout.
     localStorage.setItem(
   CHECKOUT_STORAGE_KEY,
-  'true'
+  String(Date.now())
 );
 
     setText(
