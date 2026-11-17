@@ -352,7 +352,20 @@ captureReferralCodeFromUrl();
    ========================================================= */
 
 function isPayFastCheckoutInProgress() {
-  return localStorage.getItem(CHECKOUT_STORAGE_KEY) === 'true';
+  const startedAt = Number(
+    localStorage.getItem(CHECKOUT_STORAGE_KEY)
+  );
+
+  if (
+    !Number.isFinite(startedAt) ||
+    startedAt <= 0 ||
+    Date.now() - startedAt >= GAME_PAYMENT_WINDOW_MS
+  ) {
+    localStorage.removeItem(CHECKOUT_STORAGE_KEY);
+    return false;
+  }
+
+  return true;
 }
 
 function getLastActivityTime() {
