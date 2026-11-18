@@ -1820,9 +1820,15 @@ async function checkMyAccountStatus() {
 
     const accountStatus = data?.[0]?.status || 'active';
 
-    if (accountStatus !== 'paused') {
-      return false;
-    }
+   if (accountStatus !== 'paused') {
+  return false;
+}
+
+if (accountPauseHandling) {
+  return true;
+}
+
+accountPauseHandling = true;
 
     stopIdleLogout();
 
