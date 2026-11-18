@@ -1811,12 +1811,21 @@ async function checkMyAccountStatus() {
     );
 
     if (error) {
-      console.error(
-        'Could not check customer account status:',
-        error
-      );
-      return false;
-    }
+  console.error(
+    'Could not check customer account status:',
+    error
+  );
+
+  alert(
+    'We could not verify your account status. Please try signing in again shortly.'
+  );
+
+  await supabaseClient.auth.signOut();
+
+  accountPauseHandling = false;
+
+  return true;
+}
 
     const accountStatus = data?.[0]?.status || 'active';
 
