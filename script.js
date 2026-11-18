@@ -1799,6 +1799,70 @@ element('claimReferralRewardButton')
       updateReferralClaimButton();
     }
   });
+/* =========================================================
+   CHECK CUSTOMER ACCOUNT STATUS
+   ========================================================= */
+
+async function checkMyAccountStatus() {
+  try {
+    const { data, error } = await supabaseClient.rpc(
+      'get_my_account_status'
+    );
+
+    if (error) {
+      console.error(
+        'Could not check customer account status:',
+        error
+      );
+      return false;
+    }
+
+    const accountStatus = data?.[0]?.status || 'active';
+
+    if (accountStatus !== 'paused') {
+      return false;
+    }
+
+    stopIdleLogout();
+
+    alert(
+      'Your Pixel Pick account has temporarily been paused. You cannot participate in competitions or make new entries while your account is paused. Please contact info@pixelpickcustomer.co.za for assistance.'
+    );
+
+    await supabaseClient.auth.signOut();
+
+    localStorage.removeItem(ACTIVITY_STORAGE_KEY);
+    sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
+
+    updateAccountInterface(null);
+    clearReferralDashboard();
+
+    const history = element('entryHistory');
+
+    if (history) {
+      history.replaceChildren(
+        makeParagraph(
+          'Your account is currently paused. Please contact support for assistance.'
+        )
+      );
+    }
+
+    setText(
+      'accountStatus',
+      'Your account is paused. Please contact info@pixelpickcustomer.co.za for assistance.'
+    );
+
+    return true;
+
+  } catch (error) {
+    console.error(
+      'Account status check failed:',
+      error
+    );
+
+    return false;
+  }
+}
 
 /* =========================================================
    REFRESH ACCOUNT AND HISTORY
