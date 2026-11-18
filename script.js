@@ -3886,12 +3886,20 @@ supabaseClient.auth.onAuthStateChange(
     }
 
     if (session?.user) {
-      startIdleLogout(event);
+  queueMicrotask(async () => {
+    const accountPaused = await checkMyAccountStatus();
 
-      loadMyHistory();
-      loadMyReferralDashboard(session.user);
+    if (accountPaused) {
+      return;
+    }
 
-    } else {
+    startIdleLogout(event);
+
+    loadMyHistory();
+    loadMyReferralDashboard(session.user);
+  });
+
+} else {
       stopIdleLogout();
 
       const history = element('entryHistory');
