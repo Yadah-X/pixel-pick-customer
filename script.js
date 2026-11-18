@@ -71,6 +71,7 @@ let idleLogoutTimer = null;
 let lastActivityAt = 0;
 let lastActivitySavedAt = 0;
 let idleLogoutInProgress = false;
+let accountPauseHandling = false;
 
 let selectedCompetitionId = null;
 let selectedCompetitionName = 'Competition';
