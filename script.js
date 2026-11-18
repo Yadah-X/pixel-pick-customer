@@ -1864,13 +1864,37 @@ localStorage.removeItem(ACTIVITY_STORAGE_KEY);
     return true;
 
   } catch (error) {
-    console.error(
-      'Account status check failed:',
-      error
-    );
+  console.error(
+    'Account status check failed:',
+    error
+  );
 
-    return false;
+  stopIdleLogout();
+
+  alert(
+    'We could not verify your account status. Please sign in again shortly. If the problem continues, contact info@pixelpickcustomer.co.za.'
+  );
+
+  await supabaseClient.auth.signOut();
+
+  localStorage.removeItem(ACTIVITY_STORAGE_KEY);
+  sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
+
+  updateAccountInterface(null);
+  clearReferralDashboard();
+
+  const history = element('entryHistory');
+
+  if (history) {
+    history.replaceChildren(
+      makeParagraph(
+        'We could not verify your account status. Please try signing in again shortly.'
+      )
+    );
   }
+
+  return true;
+}
 }
 
 /* =========================================================
