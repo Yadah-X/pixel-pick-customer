@@ -1838,7 +1838,9 @@ accountPauseHandling = true;
 
     await supabaseClient.auth.signOut();
 
-    localStorage.removeItem(ACTIVITY_STORAGE_KEY);
+accountPauseHandling = false;
+
+localStorage.removeItem(ACTIVITY_STORAGE_KEY);
     sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
 
     updateAccountInterface(null);
