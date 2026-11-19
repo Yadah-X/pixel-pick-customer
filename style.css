@@ -1093,9 +1093,16 @@ footer {
   margin-bottom: 30px;
 }
 
-.footer-policy-links span {
-  color: #e2e2e8;
+.footer-policy-links a {
+  color: #f5b942;
   font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease;
+}
+
+.footer-policy-links a:hover {
+  color: #ffffff;
 }
 
 .footer-bottom {
