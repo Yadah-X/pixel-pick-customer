@@ -2674,11 +2674,21 @@ function showGamePaymentPanel() {
   setHidden('gameTaskCard', true);
   setHidden('gameCompletePanel', false);
 
+  const policyCheckbox = gameElement('checkoutPolicyAccepted');
+  const policyMessage = gameElement('checkoutPolicyMessage');
+
+  if (policyCheckbox) {
+    policyCheckbox.checked = false;
+  }
+
+  if (policyMessage) {
+    policyMessage.textContent = '';
+  }
+
   setHidden(
     'gamePaymentPanel',
     !activeGameNeedsPayment
   );
-
   setText('gameProgressText', '10 of 10 complete');
   setText('gameTimerText', 'Challenge completed');
 
