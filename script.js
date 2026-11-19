@@ -3457,6 +3457,25 @@ function startPaymentCountdown() {
 async function beginGamePayment() {
   if (gamePaymentBusy) return;
 
+  // Require policy acceptance before preparing PayFast checkout.
+  const policyCheckbox = gameElement('checkoutPolicyAccepted');
+  const policyMessage = gameElement('checkoutPolicyMessage');
+
+  if (!policyCheckbox || !policyCheckbox.checked) {
+
+    if (policyMessage) {
+      policyMessage.textContent =
+        'Please tick the box to confirm that you have read and accepted the Terms and Conditions and Refund Policy before continuing to payment.';
+    }
+
+    policyCheckbox?.focus();
+    return;
+  }
+
+  if (policyMessage) {
+    policyMessage.textContent = '';
+  }
+
   if (!activeGameEntryId || !activeGameAttempt?.id) {
     setGameStatus(
       'Your saved entry details are missing. Please reopen the competition.'
