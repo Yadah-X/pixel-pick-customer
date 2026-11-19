@@ -738,32 +738,76 @@
         </p>
 
         <!-- PAYMENT WINDOW -->
-        <div id="gamePaymentPanel" class="game-payment-panel hidden">
+<div id="gamePaymentPanel" class="game-payment-panel hidden">
 
-          <h3>Complete your entry</h3>
+  <h3>Complete your entry</h3>
 
-          <p>
-            Your challenge is complete. Continue to the next page
-            to pay the competition entry fee.
-          </p>
+  <p>
+    Your challenge is complete. Continue to the next page
+    to pay the competition entry fee.
+  </p>
 
-          <p>
-            You have 30 minutes from completing the challenge
-            to complete payment.
-          </p>
+  <p>
+    You have 30 minutes from completing the challenge
+    to complete payment.
+  </p>
 
-          <p id="gamePaymentTimerText" role="status" aria-live="polite">
-            Payment time remaining: 30:00
-          </p>
+  <p id="gamePaymentTimerText" role="status" aria-live="polite">
+    Payment time remaining: 30:00
+  </p>
 
-          <button id="gamePayButton" class="cta full"
-            type="button">
-            Continue
-          </button>
+  <!-- MANDATORY POLICY ACCEPTANCE -->
+  <div class="checkout-policy-acknowledgement">
 
-          <p id="gamePaymentMessage" role="status" aria-live="polite"></p>
+    <label for="checkoutPolicyAccepted">
 
-        </div>
+      <input
+        type="checkbox"
+        id="checkoutPolicyAccepted"
+        required
+      >
+
+      <span>
+        I confirm that I have read and agree to the
+        <a href="terms.html" target="_blank" rel="noopener">
+          Terms and Conditions
+        </a>
+        and
+        <a href="refund.html" target="_blank" rel="noopener">
+          Refund Policy
+        </a>.
+        I have also had the opportunity to review the
+        <a href="privacy.html" target="_blank" rel="noopener">
+          Privacy Policy
+        </a>,
+        <a href="cancellation.html" target="_blank" rel="noopener">
+          Cancellation Policy
+        </a>
+        and
+        <a href="delivery.html" target="_blank" rel="noopener">
+          Delivery Policy
+        </a>.
+      </span>
+
+    </label>
+
+    <p
+      id="checkoutPolicyMessage"
+      class="checkout-policy-message"
+      role="alert"
+      aria-live="assertive">
+    </p>
+
+  </div>
+
+  <button id="gamePayButton" class="cta full"
+    type="button">
+    Continue to PayFast
+  </button>
+
+  <p id="gamePaymentMessage" role="status" aria-live="polite"></p>
+
+</div>
 
         <button id="gameCloseButton" class="outline full"
           type="button" onclick="closeCompetitionGame()">
