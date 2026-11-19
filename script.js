@@ -3535,13 +3535,15 @@ async function beginGamePayment() {
   );
 
   try {
-    const orderResult = await callEdgeFunction(
-      CREATE_PAYMENT_ORDER_URL,
-      {
-        entry_id: activeGameEntryId,
-        attempt_id: activeGameAttempt.id
-      }
-    );
+    
+const orderResult = await callEdgeFunction(
+  CREATE_PAYMENT_ORDER_URL,
+  {
+    entry_id: activeGameEntryId,
+    attempt_id: activeGameAttempt.id,
+    policy_accepted: true
+  }
+);
 
     if (
       !orderResult.ok ||
