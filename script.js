@@ -2560,7 +2560,7 @@ function closeCompetitionGame() {
 
   if (payButton) {
     payButton.disabled = false;
-    payButton.textContent = 'Continue to PayFast';
+    payButton.textContent = 'Checkout';
   }
 
   // Allow the customer to try again if their reward is still available.
@@ -2999,7 +2999,7 @@ async function startCompetitionGame(
 
   if (payButton) {
     payButton.disabled = false;
-    payButton.textContent = 'Continue to PayFast';
+    payButton.textContent = 'Checkout';
   }
 
   setGameStatus(
@@ -3608,7 +3608,7 @@ async function beginGamePayment() {
 
     if (payButton) {
       payButton.disabled = false;
-      payButton.textContent = 'Continue to PayFast';
+      payButton.textContent = 'Checkout';
     }
   }
 }
