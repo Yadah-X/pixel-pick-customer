@@ -1126,3 +1126,49 @@ footer {
     gap: 14px;
   }
 }
+/* =========================================================
+   CHECKOUT POLICY ACCEPTANCE
+   ========================================================= */
+
+.checkout-policy-acknowledgement {
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid rgba(245, 185, 66, 0.35);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e2e2e8;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.checkout-policy-acknowledgement label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.checkout-policy-acknowledgement input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: #f5b942;
+}
+
+.checkout-policy-acknowledgement a {
+  color: #f5b942;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.checkout-policy-acknowledgement a:hover {
+  color: #ffffff;
+}
+
+.checkout-policy-message {
+  margin: 8px 0 0;
+  color: #ffb4a8;
+  font-size: 13px;
+}
