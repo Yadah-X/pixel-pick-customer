@@ -348,25 +348,36 @@ function captureReferralCodeFromUrl() {
 
 captureReferralCodeFromUrl();
 
+
 /* =========================================================
    AUTOMATIC LOGOUT AFTER 15 MINUTES
    ========================================================= */
 
-function isPayFastCheckoutInProgress() {
+function getPayFastCheckoutExpiryTime() {
   const startedAt = Number(
     localStorage.getItem(CHECKOUT_STORAGE_KEY)
   );
 
   if (
     !Number.isFinite(startedAt) ||
-    startedAt <= 0 ||
-    Date.now() - startedAt >= GAME_PAYMENT_WINDOW_MS
+    startedAt <= 0
   ) {
     localStorage.removeItem(CHECKOUT_STORAGE_KEY);
-    return false;
+    return null;
   }
 
-  return true;
+  const expiryTime = startedAt + GAME_PAYMENT_WINDOW_MS;
+
+  if (Date.now() >= expiryTime) {
+    localStorage.removeItem(CHECKOUT_STORAGE_KEY);
+    return null;
+  }
+
+  return expiryTime;
+}
+
+function isPayFastCheckoutInProgress() {
+  return getPayFastCheckoutExpiryTime() !== null;
 }
 
 function getLastActivityTime() {
@@ -406,35 +417,50 @@ function stopIdleLogout() {
 }
 
 function scheduleIdleLogout() {
-  if (
-    idleLogoutInProgress ||
-    isPayFastCheckoutInProgress()
-  ) {
-    return;
-  }
-
   if (idleLogoutTimer) {
     clearTimeout(idleLogoutTimer);
+    idleLogoutTimer = null;
   }
 
-  const elapsed = Date.now() - lastActivityAt;
-  const remaining = IDLE_TIMEOUT_MS - elapsed;
+  if (idleLogoutInProgress) return;
+
+  const now = Date.now();
+
+  const elapsed = now - lastActivityAt;
+  const idleRemaining = IDLE_TIMEOUT_MS - elapsed;
+
+  const checkoutExpiry = getPayFastCheckoutExpiryTime();
+
+  let delay = Math.max(idleRemaining, 0);
+
+  // If checkout protection is active, check again
+  // when either inactivity expires or checkout protection ends.
+  if (checkoutExpiry !== null) {
+    const checkoutRemaining = checkoutExpiry - now;
+    delay = Math.min(delay, checkoutRemaining);
+  }
 
   idleLogoutTimer = setTimeout(
     checkIdleLogout,
-    Math.max(remaining, 0)
+    Math.max(delay, 0)
   );
 }
 
 async function checkIdleLogout() {
-  if (
-    idleLogoutInProgress ||
-    isPayFastCheckoutInProgress()
-  ) {
+  idleLogoutTimer = null;
+
+  if (idleLogoutInProgress) return;
+
+  // Keep checking while PayFast checkout protection is active.
+  if (isPayFastCheckoutInProgress()) {
+    scheduleIdleLogout();
     return;
   }
 
-  lastActivityAt = getLastActivityTime();
+  lastActivityAt = Math.max(
+    lastActivityAt,
+    getLastActivityTime()
+  );
 
   if (Date.now() - lastActivityAt < IDLE_TIMEOUT_MS) {
     scheduleIdleLogout();
@@ -465,6 +491,16 @@ function startIdleLogout(event) {
   scheduleIdleLogout();
 }
 
+function wakeIdleLogout() {
+  if (!idleLogoutTimer || idleLogoutInProgress) return;
+
+  clearTimeout(idleLogoutTimer);
+  idleLogoutTimer = null;
+
+  // Recheck immediately when the customer returns to the tab.
+  void checkIdleLogout();
+}
+
 function setupInactivityLogout() {
   [
     'pointerdown',
@@ -479,39 +515,46 @@ function setupInactivityLogout() {
       () => {
         if (idleLogoutInProgress) return;
         if (isPayFastCheckoutInProgress()) return;
+
         saveActivityTime();
       },
       { passive: true }
     );
   });
 
+  // Keep multiple open tabs synchronised.
   window.addEventListener('storage', (event) => {
-
-  // Another tab has cleared PayFast checkout protection.
-  if (event.key === CHECKOUT_STORAGE_KEY) {
-    if (!event.newValue) {
+    if (event.key === CHECKOUT_STORAGE_KEY) {
       scheduleIdleLogout();
+      return;
     }
 
-    return;
-  }
+    if (
+      event.key !== ACTIVITY_STORAGE_KEY ||
+      !event.newValue
+    ) {
+      return;
+    }
 
-  // Another tab has recorded customer activity.
-  if (
-    event.key !== ACTIVITY_STORAGE_KEY ||
-    !event.newValue
-  ) {
-    return;
-  }
+    const timestamp = Number(event.newValue);
 
-  const timestamp = Number(event.newValue);
+    if (Number.isFinite(timestamp)) {
+      lastActivityAt = timestamp;
+      scheduleIdleLogout();
+    }
+  });
 
-  if (Number.isFinite(timestamp)) {
-    lastActivityAt = timestamp;
-    scheduleIdleLogout();
-  }
-});
+  // Recheck inactivity when returning to a background tab.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      wakeIdleLogout();
+    }
+  });
+
+  window.addEventListener('pageshow', wakeIdleLogout);
+  window.addEventListener('focus', wakeIdleLogout);
 }
+
 /* =========================================================
    NAVIGATION MENU
    ========================================================= */
