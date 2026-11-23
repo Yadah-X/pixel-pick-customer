@@ -3993,6 +3993,118 @@ refreshAccount();
 
 
 /* =========================================================
+   REFERRAL LINK — COPY AND SHARE BUTTONS
+   ========================================================= */
+
+async function copyReferralLink() {
+  const linkInput = element('referralLink');
+  const referralUrl = linkInput?.value.trim();
+
+  if (!referralUrl) {
+    setReferralMessage(
+      'Your referral link is not available. Please sign in and try again.'
+    );
+    return false;
+  }
+
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(referralUrl);
+
+    } else {
+      const temporaryInput = document.createElement('textarea');
+
+      temporaryInput.value = referralUrl;
+      temporaryInput.style.position = 'fixed';
+      temporaryInput.style.opacity = '0';
+
+      document.body.appendChild(temporaryInput);
+
+      temporaryInput.focus();
+      temporaryInput.select();
+
+      const copied = document.execCommand('copy');
+
+      temporaryInput.remove();
+
+      if (!copied) {
+        throw new Error('Clipboard copy was unsuccessful.');
+      }
+    }
+
+    setReferralMessage(
+      'Your referral link has been copied successfully!'
+    );
+
+    return true;
+
+  } catch (error) {
+    console.error('Could not copy referral link:', error);
+
+    setReferralMessage(
+      'We could not copy your referral link. Please select and copy it manually.'
+    );
+
+    return false;
+  }
+}
+
+
+async function shareReferralLink() {
+  const linkInput = element('referralLink');
+  const referralUrl = linkInput?.value.trim();
+
+  if (!referralUrl) {
+    setReferralMessage(
+      'Your referral link is not available. Please sign in and try again.'
+    );
+    return;
+  }
+
+  const shareData = {
+    title: 'Join me on Pixel Pick!',
+    text: 'Join Pixel Pick and take part in exciting skill competitions. Use my referral link:',
+    url: referralUrl
+  };
+
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData);
+
+      setReferralMessage(
+        'Your referral link has been shared successfully!'
+      );
+
+      return;
+
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return;
+      }
+
+      console.error('Native sharing failed:', error);
+    }
+  }
+
+  // Browsers without native sharing will copy the link instead.
+  const copied = await copyReferralLink();
+
+  if (copied) {
+    setReferralMessage(
+      'Sharing is not supported by this browser. Your referral link has been copied so you can share it manually.'
+    );
+  }
+}
+
+
+// Connect the buttons to their actions.
+element('copyReferralLinkButton')
+  ?.addEventListener('click', copyReferralLink);
+
+element('shareReferralLinkButton')
+  ?.addEventListener('click', shareReferralLink);
+
+/* =========================================================
    ACCOUNT BUTTONS
    ========================================================= */
 
