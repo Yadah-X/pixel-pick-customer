@@ -3625,7 +3625,7 @@ const orderResult = await callEdgeFunction(
   CHECKOUT_STORAGE_KEY,
   String(Date.now())
 );
-
+scheduleIdleLogout();
     setText(
       'gamePaymentMessage',
       'Redirecting to PayFast Sandbox…'
