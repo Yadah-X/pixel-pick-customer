@@ -4230,7 +4230,7 @@ function setupPageNavigation() {
       element(id)?.classList.add('page-hidden');
     });
 
-    // Show only the selected page.
+       // Show only the selected page.
     if (page === 'home') {
       homePage.classList.remove('page-hidden');
 
@@ -4239,6 +4239,11 @@ function setupPageNavigation() {
 
     } else {
       element(page)?.classList.remove('page-hidden');
+    }
+
+    // Refresh competitions whenever Refer a Friend is opened.
+    if (page === 'referral') {
+      loadCompetitions();
     }
 
     // Update the browser address.
