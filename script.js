@@ -3137,39 +3137,39 @@ if (restoringPendingCheckout) {
         ? result.completed_task_ids
         : [];
 
-    // A submitted attempt can be resumed.
-    if (
-      activeGameAttempt.status === 'submitted' ||
-      activeGameCompletedTaskIds.length === 10
-    ) {
-      if (activeGameMode === 'referral') {
-        if (activeGameAttempt.status !== 'submitted') {
-          throw new Error(
-            'Your answers are recorded, but the completed challenge has not yet been confirmed. Please try again.'
-          );
-        }
+   // A submitted attempt can be resumed.
+if (
+  activeGameAttempt.status === 'submitted' ||
+  activeGameCompletedTaskIds.length === 10
+) {
+  if (activeGameMode === 'referral') {
+    if (activeGameAttempt.status !== 'submitted') {
+      throw new Error(
+        'Your answers are recorded, but the completed challenge has not yet been confirmed. Please try again.'
+      );
+    }
 
-        setGameStatus(
-          'Your completed challenge has been found. Checking your referral reward…'
-        );
+    setGameStatus(
+      'Your completed challenge has been found. Checking your referral reward…'
+    );
 
-        await redeemActiveReferralReward();
+    await redeemActiveReferralReward();
 
-      } else {
-        activeGameNeedsPayment =
-          activeGameMode === 'competition';
-      }
+  } else {
+    activeGameNeedsPayment =
+      activeGameMode === 'competition';
+  }
 
-     showGamePaymentPanel();
+  showGamePaymentPanel();
 
-if (restoringPendingCheckout) {
-  setGameStatus(
-    'Please complete your previous checkout before proceeding with another entry. Your previous competition entry is saved. You can continue with its payment below.'
-  );
+  if (restoringPendingCheckout) {
+    setGameStatus(
+      'Please complete your previous checkout before proceeding with another entry. Your previous competition entry is saved. You can continue with its payment below.'
+    );
+  }
+
+  return;
 }
-
-return;
-
     if (activeGameAttempt.status !== 'in_progress') {
       throw new Error(
         'This attempt is no longer available. Please refresh your history.'
