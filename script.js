@@ -2583,6 +2583,8 @@ function closeCompetitionGame() {
   gameElement('competitionGame')?.classList.add('hidden');
 
   clearGameCountdown();
+   // Keep the pending checkout protection active after closing the game.
+scheduleIdleLogout();
 
   gameSubmitting = false;
   gamePaymentBusy = false;
