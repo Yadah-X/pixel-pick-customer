@@ -3640,12 +3640,6 @@ const orderResult = await callEdgeFunction(
 
     document.body.appendChild(form);
 
-    // Prevent the 15-minute inactivity logout from interrupting checkout.
-    localStorage.setItem(
-  CHECKOUT_STORAGE_KEY,
-  String(Date.now())
-);
-scheduleIdleLogout();
     setText(
       'gamePaymentMessage',
       'Redirecting to PayFast Sandbox…'
