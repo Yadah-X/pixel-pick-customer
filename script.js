@@ -2779,12 +2779,33 @@ function showGamePaymentPanel() {
     return;
   }
 
-  // Normal paid competition entry.
+    // Normal paid competition entry.
   if (activeGameNeedsPayment) {
     setGameStatus(
       'Your challenge is complete. Complete payment within the time shown to confirm this entry.'
     );
 
+    // Start inactivity protection using the original server deadline.
+    const paymentDeadline = new Date(
+      activeGameAttempt?.payment_expires_at || ''
+    ).getTime();
+
+    if (
+      Number.isFinite(paymentDeadline) &&
+      paymentDeadline > Date.now()
+    ) {
+      const checkoutStartedAt =
+        paymentDeadline - GAME_PAYMENT_WINDOW_MS;
+
+      localStorage.setItem(
+        CHECKOUT_STORAGE_KEY,
+        String(checkoutStartedAt)
+      );
+    } else {
+      localStorage.removeItem(CHECKOUT_STORAGE_KEY);
+    }
+
+    scheduleIdleLogout();
     startPaymentCountdown();
 
   } else {
