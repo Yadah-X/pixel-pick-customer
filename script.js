@@ -2977,6 +2977,7 @@ function renderCurrentGameTask() {
    Supports normal entries, paid competitions and referrals
    ========================================================= */
 
+
 async function startCompetitionGame(
   id,
   competitionName = 'Competition',
@@ -3076,7 +3077,22 @@ async function startCompetitionGame(
       );
     }
 
-       activeGameEntryId = String(result.entry.id);
+    // -----------------------------------------------------
+    // GLOBAL PENDING CHECKOUT
+    //
+    // If the server finds an existing paid checkout,
+    // restore that checkout even if the customer clicked
+    // a different competition or a referral challenge.
+    // -----------------------------------------------------
+
+    if (result.checkout_locked === true) {
+      activeGameMode = 'competition';
+      activeReferralRewardId = null;
+      activeReferralRewardRedeemed = false;
+      activeGameNeedsPayment = true;
+    }
+
+    activeGameEntryId = String(result.entry.id);
 
     activeGameCompetitionId =
       mode === 'competition' || mode === 'referral'
@@ -3101,7 +3117,7 @@ async function startCompetitionGame(
       activeGameAttempt.status === 'submitted' ||
       activeGameCompletedTaskIds.length === 10
     ) {
-      if (mode === 'referral') {
+      if (activeGameMode === 'referral') {
         if (activeGameAttempt.status !== 'submitted') {
           throw new Error(
             'Your answers are recorded, but the completed challenge has not yet been confirmed. Please try again.'
@@ -3116,7 +3132,7 @@ async function startCompetitionGame(
 
       } else {
         activeGameNeedsPayment =
-          mode === 'competition';
+          activeGameMode === 'competition';
       }
 
       showGamePaymentPanel();
@@ -3140,7 +3156,7 @@ async function startCompetitionGame(
     );
 
     if (
-      mode === 'referral' &&
+      activeGameMode === 'referral' &&
       activeGameAttempt &&
       (
         activeGameAttempt.status === 'submitted' ||
@@ -3165,7 +3181,6 @@ async function startCompetitionGame(
     }
   }
 }
-
 
 /* =========================================================
    REDEEM A COMPLETED REFERRAL REWARD
