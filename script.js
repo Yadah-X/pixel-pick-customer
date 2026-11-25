@@ -2568,7 +2568,10 @@ function gameElement(id) {
 function setGameStatus(message) {
   const node = gameElement('gameStatus');
 
-  if (node) node.textContent = message;
+  if (node) {
+    node.textContent = message;
+    node.classList.remove('pending-checkout-warning');
+  }
 }
 function showPendingCheckoutWarning() {
   const node = gameElement('gameStatus');
