@@ -3108,13 +3108,15 @@ async function startCompetitionGame(
     // a different competition or a referral challenge.
     // -----------------------------------------------------
 
-    if (result.checkout_locked === true) {
-      activeGameMode = 'competition';
-      activeReferralRewardId = null;
-      activeReferralRewardRedeemed = false;
-      activeGameNeedsPayment = true;
-    }
+    const restoringPendingCheckout =
+  result.checkout_locked === true;
 
+if (restoringPendingCheckout) {
+  activeGameMode = 'competition';
+  activeReferralRewardId = null;
+  activeReferralRewardRedeemed = false;
+  activeGameNeedsPayment = true;
+}
     activeGameEntryId = String(result.entry.id);
 
     activeGameCompetitionId =
