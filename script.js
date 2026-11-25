@@ -3171,11 +3171,9 @@ if (
 
   showGamePaymentPanel();
 
-  if (restoringPendingCheckout) {
-    setGameStatus(
-      'Please complete your previous checkout before proceeding with another entry. Your previous competition entry is saved. You can continue with its payment below.'
-    );
-  }
+ if (restoringPendingCheckout) {
+  showPendingCheckoutWarning();
+}
 
   return;
 }
