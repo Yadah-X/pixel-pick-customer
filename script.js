@@ -2570,7 +2570,16 @@ function setGameStatus(message) {
 
   if (node) node.textContent = message;
 }
+function showPendingCheckoutWarning() {
+  const node = gameElement('gameStatus');
 
+  if (!node) return;
+
+  node.textContent =
+    'Please complete your previous checkout before proceeding with another entry. Your previous competition entry is saved. You can continue with its payment below.';
+
+  node.classList.add('pending-checkout-warning');
+}
 function clearGameCountdown() {
   if (gameCountdownInterval) {
     clearInterval(gameCountdownInterval);
