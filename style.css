@@ -1172,3 +1172,25 @@ footer {
   color: #ffb4a8;
   font-size: 13px;
 }
+/* =========================================================
+   PENDING CHECKOUT WARNING
+   ========================================================= */
+
+#gameStatus.pending-checkout-warning {
+  display: block;
+  background: #FFF3D6;
+  border: 1px solid #F0B44D;
+  border-left: 5px solid #D97706;
+  border-radius: 8px;
+  color: #78350F;
+  padding: 14px 16px;
+  margin-top: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+#gameStatus.pending-checkout-warning::before {
+  content: "⚠ ";
+  color: #B96B00;
+  font-size: 17px;
+}
