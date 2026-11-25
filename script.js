@@ -3076,12 +3076,17 @@ async function startCompetitionGame(
       );
     }
 
-    activeGameEntryId = String(result.entry.id);
+       activeGameEntryId = String(result.entry.id);
 
     activeGameCompetitionId =
       mode === 'competition' || mode === 'referral'
-        ? String(id)
+        ? String(result.competition?.id || id)
         : null;
+
+    setText(
+      'gameCompetitionTitle',
+      result.competition?.name || competitionName
+    );
 
     activeGameAttempt = result.attempt;
     activeGameTasks = result.tasks;
